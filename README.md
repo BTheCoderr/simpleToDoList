@@ -18,3 +18,6 @@ Open the index.html file in a web browser.
 Use the input field to add tasks to the list.
 Use the "Up" and "Down" buttons to prioritize tasks.
 Click the "Delete" button to remove tasks from the list.
+
+
+<img width="793" alt="Screenshot 2024-05-08 at 3 36 46 PM" src="https://github.com/BTheCoderr/simpleToDoList/assets/110173147/c92329eb-1587-4377-8647-b991e2f42fe7">
