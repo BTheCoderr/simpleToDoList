@@ -3,18 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo List App</title>
+    <title>Enhanced Todo List App</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJsSURBVFhH7ZZNaBNBFMf/m2yaNk0/UrWCUkUQD4IHBUEUxIOgICgV1IMgeBE8ehE8ehMP3gQP3jx58SqCKHjxJII9iBT8wBZUWrE0TZo2+7UzO+u8cRezSXazG9iLdH8w7O7bmXn/N/PmzQ7jnGMj0W/0/1cIgYH+Xhw+2I/eXa1oaBAR6JyLGBkbx9jkLNKeP6P5ZXB2pg1nT3ajc3cLNE2FJEEIcRGRGKFpGqphYnxyFg+ejuLes1GEMVcCvT0duDR0AN0dbZBl2REQvgQhxEWEYYxBVTXML2q49+QdxiZm8H1hGaGJCBEBQhRFQRAEiKIIjnV3QQgQoiRBkiRIoghJlhEKBRGNhBGLRhCPRREMSJADMgKyDFkSIUoiBEEEYwycc6iqhqXlJOYWljC/qGFuXsXX2UWk0hmk0lmk0hlks3ksLSehJFJQ4iriiQTiiQTi8QSUeAKqqsF13HA4hEgkjEg4hEg4iEg4hFAw4FwjwQBkWYIkiuCcQ9M0pNJZJJQE4oqKRDKFZCqNVDqDdCaLbFaDpmkIBoIIBQMIBmQEAjJkSYTEGGMgp845qBgJEkQI5JlzDt0woRsmDMOEaVowTQumacEyLViWDcuyYds2bNuBbdtwHGf1uOvCcV04rovVv+vCdRmICkEQ1kQYY2CMQRRF8nmtCKEoCpLJJGzbhm3bcF0XjuPAcRw4jgPXdeG6LhzHcT7Xz5mmuWaCxhljEARhTQiJEoQgCSGEQFVVJBIJmKYJy7JgWRYsy4JlWbBtG7Ztw7ZtOI4Dx3HgOA5c14XrunAcB4wxMPYHgUqlAl3XV0X+QmD9+A4YGwBMxPSXEgAAAABJRU5ErkJggg==">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>To-Do List</h1>
-        <div id="taskInputContainer">
-            <input type="text" id="taskInput" placeholder="Enter a new task">
-            <button id="addTaskButton">Add Task</button>
+        <div class="header">
+            <h1>Enhanced To-Do List</h1>
+            <div class="header-controls">
+                <button id="showStatsButton" title="Show Statistics">📊</button>
+                <button id="undoButton" title="Undo">↩</button>
+                <button id="redoButton" title="Redo">↪</button>
+                <button id="exportButton" title="Export Tasks">📤</button>
+                <button id="importButton" title="Import Tasks">📥</button>
+                <input type="file" id="importInput" accept=".json" style="display: none;">
+                <button id="darkModeToggle">🌙</button>
+            </div>
+            <div class="templates-section">
+                <button id="saveTemplateButton" title="Save as Template">💾</button>
+                <select id="templateSelect">
+                    <option value="">Load Template</option>
+                </select>
+            </div>
         </div>
+        
+        <div id="statsDashboardModal" class="modal">
+            <div class="modal-content wide-modal">
+                <span class="close-modal">&times;</span>
+                <h2>Task Statistics Dashboard</h2>
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>Task Overview</h3>
+                        <div class="stats-container">
+                            <div class="stat-item">
+                                <span class="stat-label">Total Tasks</span>
+                                <span id="totalTasks">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Completed</span>
+                                <span id="completedTasks">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Pending</span>
+                                <span id="pendingTasks">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Due Today</span>
+                                <span id="dueTodayTasks">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>Completion Trend</h3>
+                        <canvas id="completionTrendChart"></canvas>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>Priority Distribution</h3>
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>Category Distribution</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>Average Completion Time</h3>
+                        <div class="completion-stats">
+                            <div class="stat-item large">
+                                <span class="stat-label">Average Time</span>
+                                <span id="avgCompletionTime">0 days</span>
+                            </div>
+                            <div class="stat-item large">
+                                <span class="stat-label">Fastest Completion</span>
+                                <span id="fastestCompletion">0 days</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>Productivity Score</h3>
+                        <div class="productivity-score">
+                            <div class="score-circle">
+                                <span id="productivityScore">0</span>
+                                <span class="score-label">/ 100</span>
+                            </div>
+                            <div class="score-details">
+                                <div class="score-item">
+                                    <span class="score-label">On-time Completion Rate:</span>
+                                    <span id="onTimeRate">0%</span>
+                                </div>
+                                <div class="score-item">
+                                    <span class="score-label">Task Efficiency:</span>
+                                    <span id="taskEfficiency">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search tasks...">
+        </div>
+
+        <div id="taskInputContainer">
+            <div class="input-group">
+                <input type="text" id="taskInput" placeholder="Enter a new task">
+                <textarea id="taskDescription" placeholder="Task description (optional)" rows="1"></textarea>
+                <input type="date" id="taskDueDate">
+                <select id="taskPriority">
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                </select>
+                <input type="text" id="taskCategory" placeholder="Category">
+                <input type="text" id="taskTags" placeholder="Tags (comma-separated)">
+                <button id="addTaskButton">Add Task</button>
+            </div>
+            <div class="recurring-options">
+                <label>Repeat:</label>
+                <select id="recurringType">
+                    <option value="none">Never</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="customRecurring" style="display: none;">
+                    <input type="number" id="recurringInterval" min="1" value="1">
+                    <select id="recurringUnit">
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                    </select>
+                </div>
+                <div class="recurring-end">
+                    <label>End:</label>
+                    <select id="recurringEnd">
+                        <option value="never">Never</option>
+                        <option value="after">After</option>
+                        <option value="on">On Date</option>
+                    </select>
+                    <input type="number" id="recurringCount" min="1" value="1" style="display: none;">
+                    <input type="date" id="recurringEndDate" style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <div class="task-controls">
+            <div class="filter-group">
+                <select id="filterPriority">
+                    <option value="all">All Priorities</option>
+                    <option value="high">High Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="low">Low Priority</option>
+                </select>
+                <select id="filterCategory">
+                    <option value="all">All Categories</option>
+                </select>
+                <select id="sortTasks">
+                    <option value="created">Sort by Created Date</option>
+                    <option value="dueDate">Sort by Due Date</option>
+                    <option value="priority">Sort by Priority</option>
+                    <option value="alphabetical">Sort Alphabetically</option>
+                </select>
+            </div>
+            <button id="clearCompletedButton">Clear Completed</button>
+        </div>
+
         <ul id="taskList"></ul>
     </div>
+
+    <!-- Task Detail Modal -->
+    <div id="taskDetailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Task Details</h2>
+            <div class="task-detail-content">
+                <div class="task-main-info">
+                    <input type="text" id="modalTaskTitle" class="modal-input">
+                    <textarea id="modalTaskDescription" class="modal-input" rows="3"></textarea>
+                </div>
+                <div class="task-metadata">
+                    <div class="metadata-item">
+                        <label>Due Date:</label>
+                        <input type="date" id="modalDueDate">
+                    </div>
+                    <div class="metadata-item">
+                        <label>Priority:</label>
+                        <select id="modalPriority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="metadata-item">
+                        <label>Category:</label>
+                        <input type="text" id="modalCategory">
+                    </div>
+                    <div class="metadata-item">
+                        <label>Tags:</label>
+                        <input type="text" id="modalTags">
+                    </div>
+                    <div class="metadata-item">
+                        <label>Recurring:</label>
+                        <div class="recurring-info"></div>
+                    </div>
+                </div>
+                <div class="subtasks-section">
+                    <h3>Subtasks</h3>
+                    <div class="add-subtask">
+                        <input type="text" id="newSubtask" placeholder="New subtask">
+                        <button id="addSubtask">Add</button>
+                    </div>
+                    <ul id="subtasksList"></ul>
+                </div>
+                <div class="task-progress">
+                    <label>Progress:</label>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                        <span class="progress-text">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="templateModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Save as Template</h2>
+            <div class="template-form">
+                <input type="text" id="templateName" placeholder="Template Name" class="modal-input">
+                <div class="template-preview">
+                    <h3>Template Preview</h3>
+                    <div id="templatePreview" class="preview-content"></div>
+                </div>
+                <button id="confirmSaveTemplate">Save Template</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
