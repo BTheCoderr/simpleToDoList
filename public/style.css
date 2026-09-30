@@ -93,3 +93,7 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
   .review-metrics{grid-template-columns:1fr 1fr}.archive-row{grid-template-columns:1fr}.archive-row .buttons{margin-top:0}
   .task-modal-actions{grid-template-columns:1fr 1fr}.task-modal-actions span{display:none}
 }
+
+.review-win{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:12px}
+.review-win>span{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--good) 14%,var(--card2));color:var(--good);font-weight:900}
+.review-win b,.review-win small{display:block}.review-win small{color:var(--muted);font-size:10px;margin-top:2px}
