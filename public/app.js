@@ -297,7 +297,7 @@ function renderAnalytics(){
 
 function parseQuick(text){return parseQuickCore(text,state.projects)}
 function quickPreview(){
-  var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+tagPills(q)+(q.repeat!=="none"?'<span class="pill">↻ '+q.repeat+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
+  var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+tagPills(q)+(q.repeat!=="none"?'<span class="pill">↻ '+esc(repeatLabel(q))+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
 }
 function openQuick(seed){$("quickForm").reset();$("quickInput").value=seed||"";quickPreview();openDialog($("quickModal"));setTimeout(function(){$("quickInput").focus()},30)}
 async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id=uid("t");await save("tasks",q);await log("task.created",q.title,{source:"quick-add"});await load();toast("Captured"+(q.dueDate?" for "+fmt(q.dueDate,q.dueTime):" to Inbox"))}
