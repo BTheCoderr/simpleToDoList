@@ -161,22 +161,24 @@ test("Today dashboard customization is local and schema-free",()=>{
   assert.match(app,/function moveDashboardCard/);
 });
 
-test("v7.1 saved task views stay local",()=>{
-  for(const id of ["savedViewSelect","saveCurrentView","deleteSavedView","savedViewModal","savedViewForm","savedViewName","savedViewSummary"]){
+test("v7.1 Saved Views persist status project and tag combinations locally",()=>{
+  for(const id of ["projectFilter","tagFilter","saveCurrentView","savedViews","savedViewModal","savedViewForm","savedViewName","savedViewSummary"]){
     assert.ok(ids.includes(id),id+" missing");
   }
   assert.match(app,/cc-saved-task-views-v1/);
+  assert.match(app,/function currentTaskView/);
   assert.match(app,/function applySavedView/);
-  assert.match(app,/function saveCurrentTaskView/);
-  assert.match(app,/function deleteCurrentSavedView/);
+  assert.match(app,/function deleteSavedView/);
+  assert.match(app,/projectFilter=this\.value/);
 });
 test("v7.1 advanced recurrence controls exist without schema bump",()=>{
   for(const id of ["repeatWeekdaysWrap","repeatIntervalUnit"]){
     assert.ok(ids.includes(id),id+" missing");
   }
-  assert.equal((html.match(/data-repeat-day=/g)||[]).length,7);
+  assert.equal((html.match(/data-repeat-weekday=/g)||[]).length,7);
   assert.match(html,/value="selected_weekdays"/);
   assert.match(html,/value="custom_weeks"/);
+  assert.match(app,/data-repeat-weekday/);
 });
 
 test("database schema remains explicit v4",()=>assert.equal(DB_VERSION,4));
@@ -235,8 +237,10 @@ test("monthly recurrence handles leap year",()=>assert.equal(recurrence("monthly
 test("custom recurrence honors interval",()=>assert.equal(recurrence("custom_days","2026-01-10",{repeatInterval:3}),"2026-01-13"));
 test("every-X-weeks recurrence honors interval",()=>assert.equal(recurrence("custom_weeks","2026-01-10",{repeatInterval:2}),"2026-01-24"));
 test("selected weekday recurrence advances to next allowed day",()=>{
+  assert.equal(recurrence("selected_weekdays","2026-10-01",{repeatWeekdays:[1,3,5]}),"2026-10-02");
   assert.equal(recurrence("selected_weekdays","2026-10-02",{repeatWeekdays:[1,3,5]}),"2026-10-05");
   assert.equal(recurrence("selected_weekdays","2026-10-05",{repeatWeekdays:[1,3,5]}),"2026-10-07");
+  assert.equal(recurrence("selected_weekdays","2026-10-05",{repeatWeekdays:[]}),"");
 });
 test("repeat-until stops future occurrence",()=>assert.equal(recurrence("weekly","2026-01-30",{repeatUntil:"2026-02-05"}),""));
 
@@ -280,6 +284,19 @@ test("Quick Add parses explicit weekday recurrence",()=>{
   assert.equal(q.title,"Gym");
   assert.equal(q.repeat,"selected_weekdays");
   assert.deepEqual(q.repeatWeekdays,[1,3,5]);
+});
+test("Quick Add accepts natural named weekday recurrence",()=>{
+  const q=parseQuick("Follow up every Monday, Wednesday and Friday #calls",[]);
+  assert.equal(q.title,"Follow up");
+  assert.equal(q.repeat,"selected_weekdays");
+  assert.deepEqual(q.repeatWeekdays,[1,3,5]);
+  assert.deepEqual(q.tags,["calls"]);
+});
+test("Quick Add accepts a single named weekday",()=>{
+  const q=parseQuick("Payroll every Tuesday",[]);
+  assert.equal(q.title,"Payroll");
+  assert.equal(q.repeat,"selected_weekdays");
+  assert.deepEqual(q.repeatWeekdays,[2]);
 });
 
 test("goal progress rolls up project tasks",()=>{
