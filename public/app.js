@@ -23,7 +23,7 @@ import {
 } from "./core.js";
 import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 
-const SW_CACHE="command-center-v13";
+const SW_CACHE="command-center-v14";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),plannerMode:localStorage.getItem("cc-planner-mode")||"month",focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
@@ -355,7 +355,7 @@ function activityTitle(item){
 function activityMeta(item){
   var parts=[];
   if(item.fromStatus||item.status)parts.push((item.fromStatus?item.fromStatus+" → ":"")+(item.status||""));
-  if(item.dueDate)parts.push(item.dueDate?"Due "+item.dueDate:"Date cleared");
+  if(Object.prototype.hasOwnProperty.call(item,"dueDate"))parts.push(item.dueDate?"Due "+item.dueDate:"Date cleared");
   if(item.minutes)parts.push(item.minutes+" min");
   if(item.nextDue)parts.push("Next "+item.nextDue);
   if(item.count)parts.push(item.count+" items");
