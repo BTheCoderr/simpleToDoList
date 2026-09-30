@@ -48,6 +48,12 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 }
 
 
+
+.view-tabs{display:flex;gap:8px;align-items:center;margin-bottom:17px;padding:5px;width:max-content;max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.view-tabs button{border:0;background:transparent;color:var(--muted);padding:8px 12px}
+.view-tabs button.active{background:var(--soft);color:var(--accent)}
+.task-tools{justify-content:flex-end}
+
 /* Review, templates and archive */
 .review-hero{margin-bottom:17px;padding:clamp(22px,4vw,38px)}
 .review-hero h2{font-size:clamp(30px,4vw,50px);letter-spacing:-.045em;line-height:1.05;margin:8px 0 10px}
@@ -91,6 +97,7 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
+.view-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.view-tabs button{width:100%}.task-tools{width:100%}.task-tools button{flex:1}
 .shell{display:block}aside{transform:translateX(-105%);transition:.2s;box-shadow:var(--shadow)}aside.open{transform:none}main{padding-bottom:70px}header{padding:13px 14px}.mobile{display:block}.actions input{display:none}.view{padding:22px 14px 42px}.hero h2{font-size:40px}.stats{grid-template-columns:1fr 1fr}.stats article:nth-child(2){border-right:0}.grid,.cards,.settings{grid-template-columns:1fr}.wide{grid-column:auto}.toolbar{align-items:flex-start;flex-direction:column}.capture{flex-direction:column}.formgrid{grid-template-columns:1fr}.modalactions{grid-template-columns:1fr 1fr}.modalactions span{display:none}.bottom{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:9px;right:9px;bottom:8px;padding:5px;background:color-mix(in srgb,var(--card) 92%,transparent);border:1px solid var(--line);border-radius:17px;backdrop-filter:blur(18px);z-index:25}.bottom button{border:0;background:transparent;color:var(--muted);padding:5px;font-size:16px}.bottom button small{display:block;font-size:8px}.bottom button.active{background:var(--soft);color:var(--accent)}.metrics{grid-template-columns:1fr 1fr}.searchbox{right:10px;top:72px}
 .calendar-panel{padding:10px}.weekday-row span{font-size:8px;padding:5px 1px}.cal-day{min-height:88px;padding:5px}.cal-date button{display:none}.cal-task{font-size:8px;padding:4px}.cal-task span{display:none}
   .kanban{grid-template-columns:repeat(4,82vw);scroll-snap-type:x mandatory}.kanban-col{min-height:430px;scroll-snap-align:start}
