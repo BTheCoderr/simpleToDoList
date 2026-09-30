@@ -1,0 +1,12 @@
+{
+  "release": "mobile-onboarding-qa",
+  "version": "3.1.0",
+  "commit": "4e9276975555f338fde69b3d699fd8dbad7e2ea5",
+  "features": [
+    "onboarding",
+    "swipe-actions",
+    "mobile-bottom-sheets",
+    "diagnostics",
+    "touch-polish"
+  ]
+}
