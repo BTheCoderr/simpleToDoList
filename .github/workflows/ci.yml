@@ -46,8 +46,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prod-smoke]'))
         run: |
           for i in {1..36}; do
-            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="7.3.0"'; then
-              echo "v7.3 is live"
+            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="7.3.0"' && curl -fsS https://command-center-local.netlify.app/style.css | grep -q 'v7.3 mobile Tasks overflow fix'; then
+              echo "v7.3 mobile Tasks fix is live"
               exit 0
             fi
             sleep 5

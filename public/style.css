@@ -102,6 +102,8 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 .planner-controls{width:100%;align-items:stretch;flex-direction:column}.planner-view-tabs{width:100%}.planner-week-grid{grid-template-columns:repeat(7,82vw);overflow:visible}.planner-day-grid{grid-template-columns:1fr}.planner-day-large{min-height:320px}.quick-reschedule{grid-column:1/-1}.quick-reschedule .buttons{display:grid;grid-template-columns:repeat(4,1fr)}
 
 .saved-view-bar{align-items:flex-start}.saved-views{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.saved-view-item{flex:0 0 auto}.weekday-picker{display:grid;grid-template-columns:repeat(4,1fr)}.weekday-picker label{justify-content:center;padding:9px 5px}.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{width:100%}
+/* v7.3 mobile Tasks overflow fix */
+.tasks-toolbar{width:100%;min-width:0}.tasks-toolbar .filters{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}.tasks-toolbar .filters>*{flex:0 0 auto}.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{width:auto;min-width:135px}
 
 .bulk-bar{grid-template-columns:1fr 1fr}.bulk-bar>b{grid-column:1/-1}.bulk-bar select,.bulk-bar input,.bulk-bar button{width:100%}.tasks-toolbar #tagFilter{width:100%}.dashboard-option{grid-template-columns:1fr auto}
 
