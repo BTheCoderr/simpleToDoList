@@ -49,12 +49,12 @@ function subtaskStats(t){var a=t.subtasks||[],done=a.filter(function(x){return x
 function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
-  $$(".nav,.bottom button").forEach(function(b){b.classList.toggle("active",b.dataset.view===state.view)});
+  $(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===state.view;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
   if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Shutdown",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
-  $("sidebar").classList.remove("open");
+  $("sidebar").classList.remove("open");if(state.view==="settings")setTimeout(refreshSystemInfo,0);
 }
 
 function taskHTML(t){
@@ -230,8 +230,8 @@ function startFocus(){
 function pauseFocus(){if(!state.focus.running)return;state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000));state.focus.running=false;state.focus.endAt=null;persistFocus();clearInterval(focusTimer);focusTimer=null;renderFocus()}
 function resetFocus(){clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;state.focus.remaining=state.focus.minutes*60;persistFocus();renderFocus()}
 
-async function exportAll(){var data={version:5,exportedAt:new Date().toISOString()};for(var s of DATA_STORES)data[s]=await all(s);var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
-async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;await createSnapshot("Before JSON import");for(var s of DATA_STORES){await clear(s);for(var x of data[s]||[])await save(s,x)}await load();toast("Backup restored")}catch(e){alert("Could not import that JSON backup.")}}
+async function exportAll(){var stores=await readStores(DATA_STORES),data=Object.assign({version:6,exportedAt:new Date().toISOString()},stores),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
+async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;var guard=await createSnapshot("Before JSON import");if(!guard&&!confirm("A recovery snapshot could not be created. Continue with import anyway?"))return;for(var s of DATA_STORES){await clear(s);await saveMany(s,data[s]||[])}await load();toast("Backup restored")}catch(e){console.error(e);alert("Could not import that JSON backup.")}}
 function search(q){var box=$("searchBox");q=q.trim().toLowerCase();if(!q){box.classList.add("hidden");return}var r=[];activeTasks().filter(function(x){return(x.title+" "+x.description+" "+(x.subtasks||[]).map(function(s){return s.title}).join(" ")).toLowerCase().includes(q)}).forEach(function(x){r.push(["task",x.id,x.title,x.status])});state.projects.filter(function(x){return(x.name+" "+x.area).toLowerCase().includes(q)}).forEach(function(x){r.push(["projects","",x.name,x.area||"Project"])});state.notes.filter(function(x){return(x.title+" "+x.body).toLowerCase().includes(q)}).forEach(function(x){r.push(["note",x.id,x.title,"Note"])});state.goals.filter(function(x){return(x.name+" "+(x.why||"")).toLowerCase().includes(q)}).forEach(function(x){r.push(["goal",x.id,x.name,"Goal"])});box.innerHTML=r.slice(0,10).map(function(x){return'<div class="searchitem" data-search="'+x[0]+':'+x[1]+'"><b>'+esc(x[2])+'</b><small>'+esc(x[3])+'</small></div>'}).join("")||'<div class="empty">No matches.</div>';box.classList.remove("hidden")}
 function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}
 
@@ -407,6 +407,28 @@ async function archiveTaskById(id){
 async function restoreTask(id){var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=null;t.archivedAt=null;await save("tasks",t);await load();toast("Task restored")}
 async function archiveCompleted(){var items=activeTasks().filter(function(t){return t.status==="done"});for(var t of items){t.archivedAt=new Date().toISOString();await save("tasks",t)}await load();toast(items.length?items.length+" completed tasks archived":"Nothing to archive")}
 
+
+async function refreshSystemInfo(){
+  var box=$("systemInfo");if(!box)return;
+  try{
+    var meta=(await all("meta")).find(function(x){return x.id==="schema"})||{},estimate={};
+    if(navigator.storage&&navigator.storage.estimate)estimate=await navigator.storage.estimate();
+    var reg=("serviceWorker" in navigator)?await navigator.serviceWorker.getRegistration():null;
+    var usage=estimate.usage!=null?formatBytes(estimate.usage):"Unavailable",quota=estimate.quota!=null?formatBytes(estimate.quota):"Unavailable";
+    var rows=[
+      ["App version","v"+APP_VERSION],
+      ["Database schema","v"+(meta.version||VER)],
+      ["Offline cache",SW_CACHE],
+      ["Service worker",reg&&reg.active?"Active":"Not active yet"],
+      ["Open tasks",String(activeTasks().filter(function(t){return t.status!=="done"}).length)],
+      ["Projects / Goals",state.projects.length+" / "+state.goals.length],
+      ["Recovery snapshots",state.snapshots.length+" / "+MAX_SNAPSHOTS],
+      ["Browser storage",usage+" of "+quota]
+    ];
+    box.innerHTML=rows.map(function(r){return '<div class="system-row"><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'}).join("");
+  }catch(e){box.innerHTML='<div class="diag-row warn"><b>System info unavailable</b><small>'+esc(e.message||"Unknown error")+'</small></div>'}
+}
+
 var onboardingStep=0;
 var onboardingSlides=[
   {icon:"⌂",eyebrow:"WELCOME",title:"Your day, without the noise.",body:"Today surfaces what matters now. Everything stays private on this device — no account and no cloud database required.",action:"See Quick Add"},
@@ -474,7 +496,7 @@ document.addEventListener("click",async function(e){
   if(b.dataset.templateEdit)openTemplate(state.templates.find(function(x){return x.id===b.dataset.templateEdit}));
   if(b.dataset.archiveFilter){state.archiveFilter=b.dataset.archiveFilter;renderArchive()}
   if(b.dataset.restoreTask)await restoreTask(b.dataset.restoreTask);
-  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){await createSnapshot("Before permanent delete");await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}
+  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){var purgeGuard=await createSnapshot("Before permanent delete");if(purgeGuard||confirm("Recovery snapshot failed. Delete forever anyway?")){await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}}
   if(b.dataset.editGoal)openGoal(state.goals.find(function(g){return g.id===b.dataset.editGoal}));
   if(b.dataset.goalProject){openSimple("project");$("simpleGoal").value=b.dataset.goalProject}
   if(b.dataset.restoreSnapshot)await restoreSnapshot(b.dataset.restoreSnapshot);
@@ -538,9 +560,9 @@ $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();
 $("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}await setTaskStatus(t,"done");pauseFocus();await load();toast("Task completed")};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
-$("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;await createSnapshot("Before workspace reset");for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
+$("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;var guard=await createSnapshot("Before workspace reset");if(!guard&&!confirm("Recovery snapshot failed. Reset anyway?"))return;for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
 $("replayTour").onclick=function(){openOnboarding(true)};
-$("runDiagnostics").onclick=runDiagnostics;
+$("runDiagnostics").onclick=runDiagnostics;$("refreshSystemInfo").onclick=refreshSystemInfo;
 $("onboardingSkip").onclick=finishOnboarding;
 $("onboardingBack").onclick=function(){if(onboardingStep>0){onboardingStep--;renderOnboarding()}};
 $("onboardingNext").onclick=function(){if(onboardingStep<onboardingSlides.length-1){onboardingStep++;renderOnboarding()}else finishOnboarding()};
