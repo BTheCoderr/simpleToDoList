@@ -97,6 +97,8 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
+.saved-view-bar{align-items:flex-start}.saved-views{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.saved-view-item{flex:0 0 auto}.weekday-picker{display:grid;grid-template-columns:repeat(4,1fr)}.weekday-picker label{justify-content:center;padding:9px 5px}.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{width:100%}
+
 .bulk-bar{grid-template-columns:1fr 1fr}.bulk-bar>b{grid-column:1/-1}.bulk-bar select,.bulk-bar input,.bulk-bar button{width:100%}.tasks-toolbar #tagFilter{width:100%}.dashboard-option{grid-template-columns:1fr auto}
 
 .view-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.view-tabs button{width:100%}.task-tools{width:100%}.task-tools button{flex:1}
@@ -154,3 +156,17 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 .dashboard-option button{width:38px;min-height:36px;padding:0}
 @media(max-width:1100px){.bulk-bar{grid-template-columns:repeat(4,minmax(0,1fr))}.bulk-bar>b{grid-column:span 2}}
 
+/* v7.1 saved views + advanced scheduling */
+.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{min-width:135px}
+.saved-view-bar{display:flex;align-items:center;gap:10px;margin:-2px 0 14px;min-width:0}
+.saved-view-bar>.caps{flex:0 0 auto;color:var(--muted)}
+.saved-views{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+.saved-view-item{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:999px;background:var(--card);overflow:hidden}
+.saved-view-chip,.saved-view-delete{border:0;border-radius:0;background:transparent;min-height:34px}
+.saved-view-chip{padding:7px 10px 7px 12px;font-size:10px}.saved-view-chip.active{background:var(--soft);color:var(--accent)}
+.saved-view-delete{width:30px;padding:0;color:var(--muted);border-left:1px solid var(--line)}.saved-view-delete:hover{color:var(--danger)}
+.repeat-weekdays-wrap{grid-column:1/-1;display:grid;gap:7px;border:1px solid var(--line);border-radius:13px;padding:10px 12px}
+.repeat-weekdays-wrap>span{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:850}
+.weekday-picker{display:flex;flex-wrap:wrap;gap:7px}
+.weekday-picker label{display:flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card2);font-size:10px;font-weight:800}
+.weekday-picker input{width:16px;height:16px;margin:0;accent-color:var(--accent)}

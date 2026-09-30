@@ -23,14 +23,20 @@ async function openTasks(page){
   await expect(page.locator("#tasks")).toHaveClass(/active/);
 }
 
-async function createTask(page,{title,status="next",priority="medium",dueDate="",repeat="none",project="",tags=""}){
+async function createTask(page,{title,status="next",priority="medium",dueDate="",repeat="none",repeatInterval=1,repeatDays=[],project="",tags=""}){
   if(!(await page.locator("#tasks").evaluate(el=>el.classList.contains("active")))) await openTasks(page);
   await page.locator('#tasks [data-add="task"]').click();
   await page.locator("#taskTitle").fill(title);
   await page.locator("#taskStatus").selectOption(status);
   await page.locator("#taskPriority").selectOption(priority);
   if(dueDate) await page.locator("#taskDue").fill(dueDate);
-  if(repeat!=="none") await page.locator("#taskRepeat").selectOption(repeat);
+  if(repeat!=="none"){
+    await page.locator("#taskRepeat").selectOption(repeat);
+    if(["custom_days","after_completion","custom_weeks"].includes(repeat))await page.locator("#taskRepeatInterval").fill(String(repeatInterval));
+    if(repeat==="selected_weekdays"){
+      for(const day of repeatDays)await page.locator('[data-repeat-weekday="'+day+'"]').check();
+    }
+  }
   if(project) await page.locator("#taskProject").selectOption({label:project});
   if(tags) await page.locator("#taskTags").fill(tags);
   await page.getByRole("button",{name:"Save task"}).click();
@@ -162,6 +168,70 @@ test("Today dashboard visibility and order persist after reload",async ({page})=
   await expect(page.locator('[data-dashboard-card="habits"]')).toHaveClass(/dashboard-hidden/);
   order=await page.locator('#today .grid > [data-dashboard-card]').evaluateAll(nodes=>nodes.map(n=>n.dataset.dashboardCard));
   expect(order[0]).toBe("capture");
+});
+
+test("saved task views persist and restore status project and tag filters",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Work call doing",status:"doing",project:"Win the Week",tags:"#calls"});
+  await createTask(page,{title:"Work call next",status:"next",project:"Win the Week",tags:"#calls"});
+  await createTask(page,{title:"Personal call doing",status:"doing",project:"Launch Command Center",tags:"#calls"});
+  await createTask(page,{title:"Work errand doing",status:"doing",project:"Win the Week",tags:"#errands"});
+
+  await page.locator('[data-filter="doing"]').click();
+  await page.locator("#projectFilter").selectOption({label:"Win the Week"});
+  await page.locator("#tagFilter").selectOption("calls");
+  await expect(page.locator("#taskList")).toContainText("Work call doing");
+  await expect(page.locator("#taskList")).not.toContainText("Work call next");
+  await expect(page.locator("#taskList")).not.toContainText("Personal call doing");
+  await expect(page.locator("#taskList")).not.toContainText("Work errand doing");
+
+  await page.locator("#saveCurrentView").click();
+  await expect(page.locator("#savedViewSummary")).toContainText("Doing");
+  await expect(page.locator("#savedViewSummary")).toContainText("Win the Week");
+  await expect(page.locator("#savedViewSummary")).toContainText("#calls");
+  await page.locator("#savedViewName").fill("Work calls");
+  await page.locator("#savedViewForm .primary").click();
+  await expect(page.locator("#savedViews")).toContainText("Work calls");
+
+  await page.locator('[data-filter="all"]').click();
+  await page.locator("#projectFilter").selectOption("");
+  await page.locator("#tagFilter").selectOption("");
+  await page.reload();
+  await page.locator("#savedViews").getByRole("button",{name:"Work calls",exact:true}).click();
+
+  await expect(page.locator("#projectFilter")).toHaveValue("p2");
+  await expect(page.locator("#tagFilter")).toHaveValue("calls");
+  await expect(page.locator('[data-filter="doing"]')).toHaveClass(/active/);
+  await expect(page.locator("#taskList")).toContainText("Work call doing");
+  await expect(page.locator("#taskList")).not.toContainText("Work call next");
+  await expect(page.locator("#taskList")).not.toContainText("Personal call doing");
+  await expect(page.locator("#taskList")).not.toContainText("Work errand doing");
+});
+
+test("selected-weekday recurrence creates the next allowed weekday",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"MWF workout",dueDate:"2026-10-02",repeat:"selected_weekdays",repeatDays:[1,3,5]});
+  const row=page.locator("#taskList .task-row").filter({hasText:"MWF workout"}).first();
+  await expect(row).toContainText("Mon, Wed, Fri");
+  await row.locator(".checkbtn").click();
+
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    return tasks.filter(t=>t.title==="MWF workout").map(t=>t.dueDate).sort();
+  }).toContain("2026-10-05");
+});
+
+test("every-X-weeks recurrence creates the correct future task",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Biweekly review",dueDate:"2026-10-01",repeat:"custom_weeks",repeatInterval:2});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Biweekly review"}).first();
+  await expect(row).toContainText("Every 2 weeks");
+  await row.locator(".checkbtn").click();
+
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    return tasks.filter(t=>t.title==="Biweekly review").map(t=>t.dueDate).sort();
+  }).toContain("2026-10-15");
 });
 
 test("recurrence spawns the next dated task",async ({page})=>{

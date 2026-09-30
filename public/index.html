@@ -64,7 +64,8 @@
       </section>
 
       <section id="tasks" class="view">
-        <div class="toolbar tasks-toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button><select id="tagFilter" aria-label="Filter tasks by tag"><option value="">All tags</option></select></div><div class="buttons compact task-tools"><button id="bulkToggle" type="button">Select</button><button data-view="templates">Templates</button><button data-view="archive">Archive</button><button data-add="task" class="primary">＋ New task</button></div></div>
+        <div class="toolbar tasks-toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button><select id="projectFilter" aria-label="Filter tasks by project"><option value="">All projects</option></select><select id="tagFilter" aria-label="Filter tasks by tag"><option value="">All tags</option></select><button id="saveCurrentView" type="button">Save view</button></div><div class="buttons compact task-tools"><button id="bulkToggle" type="button">Select</button><button data-view="templates">Templates</button><button data-view="archive">Archive</button><button data-add="task" class="primary">＋ New task</button></div></div>
+        <div id="savedViews" class="saved-views" aria-label="Saved task views"></div>
         <div id="bulkBar" class="bulk-bar hidden" aria-live="polite">
           <b><span id="bulkCount">0</span> selected</b>
           <button id="bulkSelectAll" type="button">Select visible</button>
@@ -248,8 +249,9 @@
         <label>Tags / contexts<input id="taskTags" maxlength="160" placeholder="#calls #computer"></label>
         <label>Due date<input id="taskDue" type="date"></label>
         <label>Due time<input id="taskTime" type="time"></label>
-        <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="custom_days">Every X days</option><option value="after_completion">X days after completion</option></select></label>
-        <label id="repeatIntervalWrap">Every<input id="taskRepeatInterval" type="number" min="1" max="365" value="1"><small>days</small></label>
+        <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="selected_weekdays">Selected weekdays</option><option value="weekly">Weekly</option><option value="custom_weeks">Every X weeks</option><option value="monthly">Monthly</option><option value="custom_days">Every X days</option><option value="after_completion">X days after completion</option></select></label>
+        <label id="repeatIntervalWrap">Every<input id="taskRepeatInterval" type="number" min="1" max="365" value="1"><small id="repeatIntervalUnit">days</small></label>
+        <fieldset id="repeatWeekdaysWrap" class="weekday-picker hidden"><legend>Repeat on</legend><label><input type="checkbox" data-repeat-weekday="1">Mon</label><label><input type="checkbox" data-repeat-weekday="2">Tue</label><label><input type="checkbox" data-repeat-weekday="3">Wed</label><label><input type="checkbox" data-repeat-weekday="4">Thu</label><label><input type="checkbox" data-repeat-weekday="5">Fri</label><label><input type="checkbox" data-repeat-weekday="6">Sat</label><label><input type="checkbox" data-repeat-weekday="0">Sun</label></fieldset>
         <label>Repeat until<input id="taskRepeatUntil" type="date"></label>
       </div>
       <div class="subtask-editor">
@@ -258,6 +260,15 @@
         <div class="capture"><input id="newSubtask" type="text" placeholder="Add a checklist item"><button id="addSubtask" type="button">Add</button></div>
       </div>
       <div class="modalactions task-modal-actions"><button id="deleteTask" type="button" class="dangerbtn hidden">Trash</button><button id="archiveTask" type="button" class="hidden">Archive</button><button id="saveTemplateFromTask" type="button">Save template</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="savedViewModal">
+    <form id="savedViewForm" class="modal">
+      <div class="modalhead"><div><small class="caps">TASKS</small><h2>Save current view</h2></div><button type="button" data-close="savedViewModal" class="icon" aria-label="Close">×</button></div>
+      <p id="savedViewSummary" class="hint"></p>
+      <label>View name<input id="savedViewName" required maxlength="60" placeholder="Calls for Work"></label>
+      <div class="modalactions"><span></span><span></span><button type="button" data-close="savedViewModal">Cancel</button><button class="primary">Save view</button></div>
     </form>
   </dialog>
 
@@ -273,9 +284,9 @@
   <dialog id="quickModal">
     <form id="quickForm" class="modal">
       <div class="modalhead"><div><small class="caps">SMART QUICK ADD</small><h2>Capture in one line</h2></div><button type="button" data-close="quickModal" class="icon" aria-label="Close">×</button></div>
-      <label>What needs to happen?<input id="quickInput" autocomplete="off" placeholder="Call Josh tomorrow #work !high"></label>
+      <label>What needs to happen?<input id="quickInput" autocomplete="off" placeholder="Follow up every Monday, Wednesday and Friday #calls"></label>
       <div id="quickPreview" class="quick-preview"></div>
-      <small class="hint">Try: tomorrow · next Monday · #project · !high · daily · weekly</small>
+      <small class="hint">Try: tomorrow · #project · #calls · !high · every 2 weeks · every Mon/Wed/Fri</small>
       <div class="modalactions"><span></span><span></span><button type="button" data-close="quickModal">Cancel</button><button class="primary">Add task</button></div>
     </form>
   </dialog>
