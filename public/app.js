@@ -333,6 +333,11 @@ document.addEventListener("click",async function(e){
   if(b.dataset.swipeEdit){closeSwipeRows();openTask(state.tasks.find(function(x){return x.id===b.dataset.swipeEdit}))}
   if(b.dataset.swipeComplete){closeSwipeRows();await toggleTask(b.dataset.swipeComplete);toast("Task updated")}
   if(b.dataset.swipeDelete){closeSwipeRows();await deleteTaskById(b.dataset.swipeDelete)}
+  if(b.dataset.templateUse)await useTemplate(b.dataset.templateUse,b.dataset.templateBuiltin==="1");
+  if(b.dataset.templateEdit)openTemplate(state.templates.find(function(x){return x.id===b.dataset.templateEdit}));
+  if(b.dataset.archiveFilter){state.archiveFilter=b.dataset.archiveFilter;renderArchive()}
+  if(b.dataset.restoreTask)await restoreTask(b.dataset.restoreTask);
+  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}
 });
 var swipeStart=null;
 document.addEventListener("touchstart",function(e){
@@ -351,7 +356,7 @@ document.addEventListener("click",function(e){
   if(!e.target.closest(".task-row")&&!e.target.closest(".task-actions"))closeSwipeRows();
 });
 document.addEventListener("dragstart",function(e){var card=e.target.closest("[data-drag-task]");if(card)e.dataTransfer.setData("text/plain",card.dataset.dragTask)});
-$$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function(e){e.preventDefault();col.classList.add("dragover")});col.addEventListener("dragleave",function(){col.classList.remove("dragover")});col.addEventListener("drop",async function(e){e.preventDefault();col.classList.remove("dragover");var id=e.dataTransfer.getData("text/plain"),t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.status=col.dataset.dropStatus;t.completedAt=t.status==="done"?new Date().toISOString():null;await save("tasks",t);await load();toast("Moved to "+t.status)})});
+$$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function(e){e.preventDefault();col.classList.add("dragover")});col.addEventListener("dragleave",function(){col.classList.remove("dragover")});col.addEventListener("drop",async function(e){e.preventDefault();col.classList.remove("dragover");var id=e.dataTransfer.getData("text/plain"),t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,col.dataset.dropStatus);await load();toast("Moved to "+t.status)})});
 
 $("menu").onclick=function(){$("sidebar").classList.toggle("open")};
 $("addTask").onclick=function(){openQuick()};
@@ -363,7 +368,15 @@ $("taskForm").onsubmit=saveTask;
 $("addSubtask").onclick=function(){var v=$("newSubtask").value.trim();if(!v)return;editingSubtasks.push({id:uid("s"),title:v,done:false});$("newSubtask").value="";renderSubtasks()};
 $("newSubtask").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$("addSubtask").click()}});
 $("simpleForm").onsubmit=saveSimple;
-$("deleteTask").onclick=async function(){var id=$("taskId").value;if(id&&confirm("Delete this task?")){await del("tasks",id);$("taskModal").close();await load()}};
+$("deleteTask").onclick=async function(){var id=$("taskId").value;if(id&&confirm("Move this task to Trash?")){$("taskModal").close();await trashTask(id)}};
+$("archiveTask").onclick=async function(){var id=$("taskId").value;if(id){$("taskModal").close();await archiveTaskById(id)}};
+$("saveTemplateFromTask").onclick=saveCurrentAsTemplate;
+$("taskRepeat").onchange=syncRepeatUI;
+$("templateForm").onsubmit=saveTemplateForm;
+$("newTemplate").onclick=function(){openTemplate()};
+$("deleteTemplate").onclick=async function(){var id=$("templateId").value;if(id&&confirm("Delete this template?")){await del("templates",id);$("templateModal").close();await load();toast("Template deleted")}};
+$("weeklyPlanForm").onsubmit=planNextWeek;
+$("archiveCompleted").onclick=archiveCompleted;
 $("deleteSimple").onclick=async function(){var k=$("simpleKind").value,id=$("simpleId").value;if(id&&confirm("Delete this "+k+"?")){await del(k==="note"?"notes":k+"s",id);$("simpleModal").close();await load()}};
 $("search").oninput=function(e){search(e.target.value)};
 $("calPrev").onclick=function(){state.calendarCursor=new Date(state.calendarCursor.getFullYear(),state.calendarCursor.getMonth()-1,1);renderCalendar()};
@@ -371,7 +384,7 @@ $("calNext").onclick=function(){state.calendarCursor=new Date(state.calendarCurs
 $("calToday").onclick=function(){state.calendarCursor=new Date();renderCalendar()};
 $("focusStart").onclick=startFocus;$("focusPause").onclick=pauseFocus;$("focusReset").onclick=resetFocus;
 $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();renderFocus()};
-$("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}t.status="done";t.completedAt=new Date().toISOString();await save("tasks",t);pauseFocus();await load();toast("Task completed")};
+$("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}await setTaskStatus(t,"done");pauseFocus();await load();toast("Task completed")};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
 $("reset").onclick=async function(){if(!confirm("Reset all local data? Export a backup first if you want to keep it."))return;for(var s of STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset")};
