@@ -72,5 +72,8 @@
       "text": "text",
       "url": "url"
     }
-  }
+  },
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }

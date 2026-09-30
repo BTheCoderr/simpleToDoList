@@ -37,7 +37,7 @@ v7.3 finishes the local-only product layer without changing IndexedDB schema v4.
 - **Optional Privacy Lock** — a local convenience lock using PBKDF2 + SHA-256 with a random salt. It hides the UI on a fresh session but does **not** encrypt IndexedDB.
 - **Mobile task stages** — the existing swipe action row now supports fast moves to Next and Doing in addition to Edit, Done, and Delete.
 - **Goal → Project → Task flow** — create projects directly from goals and tasks directly from project cards.
-- **Offline cache v15** — privacy and export modules are part of the offline app shell.
+- **PWA release polish / offline cache v16** — validated 192px, 512px, maskable, and Apple touch icons; hardened same-origin offline fallback; added install guidance, theme-aware app chrome, deep-link offline QA, and share-target coverage.
 
 Production deployment is intentionally deferred while Netlify build credits are unavailable. GitHub remains the source of truth and every change is tested before merge.
 
@@ -96,7 +96,7 @@ Daily Shutdown, Weekly Review, Analytics, and Activity History live under **Revi
 - Workspace Markdown export
 - Archive / Trash / Undo
 - Optional local Privacy Lock
-- PWA offline support and controlled update activation
+- PWA install/offline support, share target, theme-aware app chrome, and controlled update activation
 
 ## Frontend architecture
 

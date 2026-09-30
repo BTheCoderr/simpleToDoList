@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b1020">
+  <meta id="themeColor" name="theme-color" content="#0b1020">
+  <meta name="color-scheme" content="light dark">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -238,7 +239,7 @@
           <div class="panel"><h3>Privacy lock</h3><p>Optional local privacy screen for this device. It is a convenience lock, not encryption of IndexedDB.</p><div id="privacyLockStatus" class="privacy-lock-status"></div><div class="buttons"><button id="enablePrivacyLock">Enable lock</button><button id="changePrivacyLock" class="hidden">Change code</button><button id="disablePrivacyLock" class="hidden">Disable lock</button><button id="lockNow" class="hidden">Lock now</button></div></div>
           <div class="panel"><h3>Automatic snapshots</h3><p>Command Center keeps rotating local recovery points before risky changes and once per day.</p><div class="buttons"><button id="createSnapshot">Create snapshot now</button></div><div id="snapshotList" class="snapshot-list" aria-live="polite"></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
-          <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
+          <div class="panel"><h3>Install app</h3><p id="installCopy">Install Command Center for a standalone, local-first app experience. Offline support is available after the first successful load.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: open this site in Safari, tap Share, choose “Add to Home Screen,” then tap Add.</small></div>
           <div class="panel"><h3>Getting started</h3><p>Replay the short walkthrough whenever you want.</p><div class="buttons"><button id="replayTour">Take the tour again</button></div></div>
           <div class="panel"><h3>Share capture</h3><p>Compatible installed PWAs can appear in the system Share menu. If your browser does not support that, copy something and open the capture inbox here.</p><div class="buttons"><button id="openShareCapture">Open share capture</button></div></div>
           <div class="panel"><h3>App health</h3><p>Check local storage, IndexedDB, service worker, and install state.</p><div class="buttons"><button id="runDiagnostics">Run app check</button></div><div id="diagnosticResults" class="diagnostics" aria-live="polite"></div></div>

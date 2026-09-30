@@ -65,6 +65,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("playwright.config.mjs"));
   assert.ok(fs.existsSync("tests/e2e.spec.mjs"));
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
+  assert.ok(fs.existsSync("tests/pwa.e2e.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/Wait for Netlify v7.3/);
   assert.match(workflow,/Smoke test production/);
@@ -73,8 +74,8 @@ test("browser QA files and scripts exist",()=>{
 });
 
 test("manifest has share target",()=>assert.equal(manifest.share_target?.action,"/?share=1"));
+test("manifest declares language and stays rotation-friendly",()=>{assert.equal(manifest.lang,"en-US");assert.equal(manifest.dir,"ltr");assert.equal(manifest.prefer_related_applications,false);assert.equal("orientation" in manifest,false)});
 test("manifest review shortcut remains simplified",()=>assert.ok((manifest.shortcuts||[]).some(x=>x.url==="/?view=review")));
-test("manifest does not force portrait orientation",()=>assert.equal("orientation" in manifest,false));
 test("production PWA PNG icons exist and are declared",()=>{
   for(const name of ["apple-touch-icon.png","icon-192.png","icon-512.png","icon-512-maskable.png"]){
     assert.ok(fs.existsSync("public/"+name),name+" missing");
@@ -86,8 +87,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v15 and caches v7.3 modules",()=>{
-  assert.match(sw,/command-center-v15/);
+test("service worker cache is v16 and caches v7.3 modules",()=>{
+  assert.match(sw,/command-center-v16/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -98,6 +99,18 @@ test("service worker updates wait for explicit reload",()=>{
   assert.match(sw,/SKIP_WAITING/);
   assert.match(app,/showUpdateBanner/);
   assert.match(app,/controllerchange/);
+});
+test("service worker keeps offline fallback same-origin and navigation-safe",()=>{
+  assert.match(sw,/url\.origin!==self\.location\.origin/);
+  assert.match(sw,/request\.mode==="navigate"/);
+  assert.match(sw,/status:503/);
+});
+test("installed app chrome follows the selected theme",()=>{
+  assert.match(html,/id="themeColor" name="theme-color"/);
+  assert.match(html,/name="color-scheme" content="light dark"/);
+  assert.match(app,/meta\[name="theme-color"\]/);
+  assert.match(app,/#f5f7fb/);
+  assert.match(app,/#0b1020/);
 });
 test("dialog focus management is present",()=>{
   assert.match(app,/function openDialog/);

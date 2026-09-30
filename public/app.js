@@ -25,7 +25,7 @@ import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backu
 import { createPrivacyCredential, verifyPrivacyCode } from "./privacy.js";
 import { tasksToCsv, workspaceToMarkdown } from "./exporters.js";
 
-const SW_CACHE="command-center-v15";
+const SW_CACHE="command-center-v16";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),plannerMode:localStorage.getItem("cc-planner-mode")||"month",focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
@@ -509,7 +509,7 @@ async function importAll(file){
   }catch(e){console.error(e);alert("Could not import that JSON backup. No data was changed.")}
 }
 function search(q){var box=$("searchBox");q=q.trim().toLowerCase();if(!q){box.classList.add("hidden");return}var r=[];activeTasks().filter(function(x){return(x.title+" "+x.description+" "+(x.tags||[]).join(" ")+" "+(x.subtasks||[]).map(function(s){return s.title}).join(" ")).toLowerCase().includes(q)}).forEach(function(x){r.push(["task",x.id,x.title,x.status])});state.projects.filter(function(x){return(x.name+" "+x.area).toLowerCase().includes(q)}).forEach(function(x){r.push(["projects","",x.name,x.area||"Project"])});state.notes.filter(function(x){return(x.title+" "+x.body).toLowerCase().includes(q)}).forEach(function(x){r.push(["note",x.id,x.title,"Note"])});state.goals.filter(function(x){return(x.name+" "+(x.why||"")).toLowerCase().includes(q)}).forEach(function(x){r.push(["goal",x.id,x.name,"Goal"])});box.innerHTML=r.slice(0,10).map(function(x){return'<div class="searchitem" data-search="'+x[0]+':'+x[1]+'"><b>'+esc(x[2])+'</b><small>'+esc(x[3])+'</small></div>'}).join("")||'<div class="empty">No matches.</div>';box.classList.remove("hidden")}
-function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}
+function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t;var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute("content",t==="dark"?"#0b1020":"#f5f7fb")}
 
 
 
@@ -935,10 +935,11 @@ async function registerServiceWorker(){
 }
 
 var deferredInstall=null;
-window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;var b=$("installApp");if(b){b.disabled=false;b.textContent="Install Command Center"}});
-window.addEventListener("appinstalled",function(){deferredInstall=null;var b=$("installApp");if(b){b.textContent="Installed";b.disabled=true}toast("Command Center installed")});
-function installState(){var standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);var b=$("installApp"),hint=$("iosInstall"),copy=$("installCopy");if(!b)return;if(standalone){b.textContent="Installed";b.disabled=true;if(copy)copy.textContent="You are running Command Center as an installed web app."}else if(ios){b.textContent="How to install on iPhone";if(hint)hint.classList.remove("hidden")}}
-$("installApp").onclick=async function(){if(deferredInstall){deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;return}if(/iphone|ipad|ipod/i.test(navigator.userAgent)){var h=$("iosInstall");if(h)h.classList.remove("hidden");toast("Safari → Share → Add to Home Screen");return}toast("Use your browser menu → Install app / Add to Home Screen")};
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;installState()});
+window.addEventListener("appinstalled",function(){deferredInstall=null;installState();toast("Command Center installed")});
+window.addEventListener("pageshow",function(){installState()});
+function installState(){var standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);var b=$("installApp"),hint=$("iosInstall"),copy=$("installCopy");if(!b)return;if(hint)hint.classList.toggle("hidden",!ios||standalone);if(standalone){b.textContent="Installed";b.disabled=true;if(copy)copy.textContent="You are running Command Center as an installed web app."}else if(ios){b.textContent="Install on iPhone";b.disabled=false}else{b.textContent=deferredInstall?"Install Command Center":"Install from browser";b.disabled=false}}
+$("installApp").onclick=async function(){if(deferredInstall){deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;installState();return}if(/iphone|ipad|ipod/i.test(navigator.userAgent)){var h=$("iosInstall");if(h)h.classList.remove("hidden");toast("Safari → Share → Add to Home Screen → Add");return}toast("Use your browser menu → Install app / Add to Home Screen")};
 
 loadFocus();
 var params=new URLSearchParams(location.search);if(params.get("view"))state.view=params.get("view");if(params.get("quick")==="1")setTimeout(function(){openQuick()},300);

@@ -9,6 +9,7 @@
 - Added direct Project → Task creation.
 - Expanded audit logging for status changes, imports, restores, deletes, habits, privacy, and exports.
 - Added offline caching for `privacy.js` and `exporters.js`.
+- Polished the installable PWA shell: cache v16, same-origin offline fallbacks, deep-link offline coverage, theme-aware browser chrome, iPhone install guidance, icon-dimension checks, and share-target E2E coverage.
 - Kept IndexedDB schema at v4.
 
 ## 7.2.1 — Navigation Persistence
