@@ -55,6 +55,22 @@ test("production desktop and mobile release surfaces stay usable",async ({page})
   await page.locator('#sidebar [data-view="tasks"]').click();
   await expect(page.getByRole("heading",{name:"Tasks",exact:true})).toBeVisible();
   await expect(page.locator('#tasks [data-add="task"]')).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
+  const mobileLayout=await page.evaluate(()=>{
+    const viewport=document.documentElement.clientWidth;
+    const offenders=[...document.querySelectorAll("body *")].map(el=>{
+      const r=el.getBoundingClientRect();
+      return {
+        tag:el.tagName.toLowerCase(),
+        id:el.id||"",
+        cls:typeof el.className==="string"?el.className:"",
+        left:Math.round(r.left),
+        right:Math.round(r.right),
+        width:Math.round(r.width)
+      };
+    }).filter(x=>x.right>viewport+2||x.left<-2).slice(0,20);
+    return {viewport,scrollWidth:document.documentElement.scrollWidth,offenders};
+  });
+  console.log("MOBILE_LAYOUT",JSON.stringify(mobileLayout));
   await page.screenshot({path:"test-results/production-mobile.png",fullPage:true});
+  expect(mobileLayout.scrollWidth<=mobileLayout.viewport+2).toBe(true);
 });
