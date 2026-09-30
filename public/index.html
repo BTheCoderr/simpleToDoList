@@ -1,189 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Manager</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/css/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Private local-first personal productivity command center">
+  <title>Command Center</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">Task Manager</a>
-            <div class="d-flex" id="navbarContent">
-                <div class="auth-buttons" id="authButtons">
-                    <button class="btn btn-outline-light me-2" onclick="showLoginForm()">Login</button>
-                    <button class="btn btn-light" onclick="showRegisterForm()">Register</button>
-                </div>
-                <div class="user-info d-none" id="userInfo">
-                    <span class="text-light me-3" id="userGreeting"></span>
-                    <button class="btn btn-outline-light" onclick="logout()">Logout</button>
-                </div>
-            </div>
+  <div class="shell">
+    <aside id="sidebar">
+      <div class="brand"><span>C</span><div><b>Command Center</b><small>private · local-first</small></div></div>
+      <nav>
+        <button class="nav active" data-view="today">⌂ Today</button>
+        <button class="nav" data-view="tasks">✓ Tasks <i id="openCount">0</i></button>
+        <button class="nav" data-view="projects">▦ Projects</button>
+        <button class="nav" data-view="notes">✎ Notes</button>
+        <button class="nav" data-view="habits">↻ Habits</button>
+        <button class="nav" data-view="analytics">↗ Analytics</button>
+        <button class="nav" data-view="settings">⚙ Settings</button>
+      </nav>
+      <div class="local"><strong>● Stored on this device</strong><small>No account. No cloud database.</small></div>
+    </aside>
+
+    <main>
+      <header>
+        <button id="menu" class="icon mobile">☰</button>
+        <div><small id="eyebrow">YOUR DAY</small><h1 id="title">Today</h1></div>
+        <div class="actions"><input id="search" placeholder="Search everything"><button id="addTask" class="primary">＋ Quick add</button></div>
+      </header>
+      <div id="searchBox" class="searchbox hidden"></div>
+
+      <section id="today" class="view active">
+        <div class="hero">
+          <div><small id="todayDate" class="caps"></small><h2 id="greeting">Good day.</h2><p>Keep Today small. Capture everything else and let the system hold it.</p></div>
+          <div class="stats">
+            <article><span>Today</span><b id="sToday">0</b><small>priorities</small></article>
+            <article><span>Overdue</span><b id="sOverdue">0</b><small>needs a decision</small></article>
+            <article><span>This week</span><b id="sWeek">0</b><small>completed</small></article>
+            <article><span>Projects</span><b id="sProjects">0</b><small>active</small></article>
+          </div>
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="container mt-4">
-        <!-- Auth Forms -->
-        <div id="authForms">
-            <!-- Login Form -->
-            <div class="card mb-4 d-none" id="loginForm">
-                <div class="card-header">Login</div>
-                <div class="card-body">
-                    <form onsubmit="login(event)">
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="loginEmail" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" id="loginPassword" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Login</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Register Form -->
-            <div class="card mb-4 d-none" id="registerForm">
-                <div class="card-header">Register</div>
-                <div class="card-body">
-                    <form onsubmit="register(event)">
-                        <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" id="registerUsername" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="registerEmail" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="registerFirstName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="registerLastName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" id="registerPassword" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Register</button>
-                    </form>
-                </div>
-            </div>
+        <div class="grid">
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">FOCUS</small><h3>Today's priorities</h3></div><button data-add="task" class="link">Add task</button></div><div id="todayTasks" class="stack"></div></div>
+          <div class="panel"><div class="panelhead"><div><small class="caps">MOMENTUM</small><h3>Habits</h3></div></div><div id="todayHabits" class="stack"></div></div>
+          <div class="panel"><div class="panelhead"><div><small class="caps">PROGRESS</small><h3>Projects</h3></div></div><div id="todayProjects" class="stack"></div></div>
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">CAPTURE</small><h3>Quick inbox</h3></div></div><form id="captureForm" class="capture"><input id="capture" placeholder="What do you need to remember?"><button class="primary">Capture</button></form></div>
         </div>
+      </section>
 
-        <!-- Task Management Section -->
-        <div id="taskSection" class="d-none">
-            <!-- Analytics Dashboard -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Dashboard</span>
-                    <button class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
-                        <i class="bi bi-arrow-clockwise"></i> Refresh
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <h5>Total Tasks</h5>
-                                <h2 id="totalTasksCount">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <h5>Completed</h5>
-                                <h2 id="completedTasksCount">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <h5>Due Today</h5>
-                                <h2 id="dueTodayCount">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="stats-card">
-                                <h5>Completion Rate</h5>
-                                <h2 id="completionRate">0%</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-4">
-                        <div class="col-md-6">
-                            <canvas id="tasksByPriorityChart"></canvas>
-                        </div>
-                        <div class="col-md-6">
-                            <canvas id="tasksByStatusChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <section id="tasks" class="view">
+        <div class="toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button></div><button data-add="task" class="primary">＋ New task</button></div>
+        <div class="panel"><div id="taskList" class="stack"></div></div>
+      </section>
 
-            <!-- Create Task Form -->
-            <div class="card mb-4">
-                <div class="card-header">Create New Task</div>
-                <div class="card-body">
-                    <form onsubmit="createTask(event)">
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <input type="text" class="form-control" id="taskTitle" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" id="taskDescription" rows="2"></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Priority</label>
-                                <select class="form-select" id="taskPriority">
-                                    <option value="low">Low</option>
-                                    <option value="medium" selected>Medium</option>
-                                    <option value="high">High</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Category</label>
-                                <input type="text" class="form-control" id="taskCategory">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Due Date</label>
-                                <input type="datetime-local" class="form-control" id="taskDueDate">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Create Task</button>
-                    </form>
-                </div>
-            </div>
+      <section id="projects" class="view">
+        <div class="toolbar"><p>Group work into outcomes you can actually finish.</p><button data-add="project" class="primary">＋ New project</button></div>
+        <div id="projectGrid" class="cards"></div>
+      </section>
 
-            <!-- Task List -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Tasks</span>
-                    <div class="btn-group">
-                        <button class="btn btn-outline-secondary btn-sm" onclick="filterTasks('all')">All</button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="filterTasks('pending')">Pending</button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="filterTasks('completed')">Completed</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="taskList" class="list-group"></div>
-                </div>
-            </div>
+      <section id="notes" class="view">
+        <div class="toolbar"><p>Ideas, decisions and context that belong near the work.</p><button data-add="note" class="primary">＋ New note</button></div>
+        <div id="noteGrid" class="cards"></div>
+      </section>
+
+      <section id="habits" class="view">
+        <div class="toolbar"><p>Simple daily actions. Check them off and keep moving.</p><button data-add="habit" class="primary">＋ New habit</button></div>
+        <div class="panel"><div id="habitList" class="stack"></div></div>
+      </section>
+
+      <section id="analytics" class="view">
+        <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
+        <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="settings">
+          <div class="panel"><h3>Appearance</h3><p>Theme is saved only on this device.</p><div class="buttons"><button id="light">Light</button><button id="dark">Dark</button></div></div>
+          <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
+          <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
+          <div class="panel"><h3>Storage</h3><p>Tasks, projects, notes, habits and history use IndexedDB. UI preferences use localStorage.</p><span class="badge">LOCAL-ONLY ARCHITECTURE</span></div>
         </div>
-    </div>
+      </section>
+    </main>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <nav class="bottom">
+    <button class="active" data-view="today">⌂<small>Today</small></button><button data-view="tasks">✓<small>Tasks</small></button><button data-view="projects">▦<small>Projects</small></button><button data-view="notes">✎<small>Notes</small></button><button data-view="settings">⚙<small>More</small></button>
+  </nav>
+
+  <dialog id="taskModal">
+    <form id="taskForm" class="modal">
+      <div class="modalhead"><div><small class="caps">TASK</small><h2 id="taskHeading">New task</h2></div><button type="button" data-close="taskModal" class="icon">×</button></div>
+      <input id="taskId" type="hidden">
+      <label>Title<input id="taskTitle" required maxlength="140"></label>
+      <label>Description<textarea id="taskDescription" rows="3"></textarea></label>
+      <div class="formgrid">
+        <label>Status<select id="taskStatus"><option value="inbox">Inbox</option><option value="next">Next</option><option value="doing">Doing</option><option value="done">Done</option></select></label>
+        <label>Priority<select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label>
+        <label>Project<select id="taskProject"><option value="">No project</option></select></label>
+        <label>Due date<input id="taskDue" type="date"></label>
+        <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label>
+      </div>
+      <div class="modalactions"><button id="deleteTask" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="simpleModal">
+    <form id="simpleForm" class="modal">
+      <div class="modalhead"><div><small id="simpleType" class="caps">ITEM</small><h2 id="simpleHeading">New item</h2></div><button type="button" data-close="simpleModal" class="icon">×</button></div>
+      <input id="simpleId" type="hidden"><input id="simpleKind" type="hidden">
+      <label>Title<input id="simpleTitle" required maxlength="120"></label>
+      <label id="simpleBodyWrap">Details<textarea id="simpleBody" rows="7"></textarea></label>
+      <label id="simpleMetaWrap">Area / label<input id="simpleMeta"></label>
+      <label id="simplePinWrap" class="check"><input id="simplePin" type="checkbox"> Pin this note</label>
+      <div class="modalactions"><button id="deleteSimple" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="simpleModal">Cancel</button><button class="primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast"></div>
+  <script src="/app.js" defer></script>
 </body>
 </html>
