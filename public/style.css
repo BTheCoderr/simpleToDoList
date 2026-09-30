@@ -97,6 +97,8 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
+.bulk-bar{grid-template-columns:1fr 1fr}.bulk-bar>b{grid-column:1/-1}.bulk-bar select,.bulk-bar input,.bulk-bar button{width:100%}.tasks-toolbar #tagFilter{width:100%}.dashboard-option{grid-template-columns:1fr auto}
+
 .view-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.view-tabs button{width:100%}.task-tools{width:100%}.task-tools button{flex:1}
 .shell{display:block}aside{transform:translateX(-105%);transition:.2s;box-shadow:var(--shadow)}aside.open{transform:none}main{padding-bottom:70px}header{padding:13px 14px}.mobile{display:block}.actions input{display:none}.view{padding:22px 14px 42px}.hero h2{font-size:40px}.stats{grid-template-columns:1fr 1fr}.stats article:nth-child(2){border-right:0}.grid,.cards,.settings{grid-template-columns:1fr}.wide{grid-column:auto}.toolbar{align-items:flex-start;flex-direction:column}.capture{flex-direction:column}.formgrid{grid-template-columns:1fr}.modalactions{grid-template-columns:1fr 1fr}.modalactions span{display:none}.bottom{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:9px;right:9px;bottom:8px;padding:5px;background:color-mix(in srgb,var(--card) 92%,transparent);border:1px solid var(--line);border-radius:17px;backdrop-filter:blur(18px);z-index:25}.bottom button{border:0;background:transparent;color:var(--muted);padding:5px;font-size:16px}.bottom button small{display:block;font-size:8px}.bottom button.active{background:var(--soft);color:var(--accent)}.metrics{grid-template-columns:1fr 1fr}.searchbox{right:10px;top:72px}
 .calendar-panel{padding:10px}.weekday-row span{font-size:8px;padding:5px 1px}.cal-day{min-height:88px;padding:5px}.cal-date button{display:none}.cal-task{font-size:8px;padding:4px}.cal-task span{display:none}
@@ -132,3 +134,23 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 /* Production update notice */
 .update-banner{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translateX(-50%);z-index:80;width:min(620px,calc(100% - 28px));display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(0,0,0,.24)}
 .update-banner b,.update-banner small{display:block}.update-banner small{color:var(--muted);font-size:10px;margin-top:2px}.update-banner .buttons{margin:0;flex-wrap:nowrap}
+
+/* v7 power-user controls */
+.tag-pill{background:color-mix(in srgb,var(--accent) 9%,var(--card2));color:var(--accent);border-color:color-mix(in srgb,var(--accent) 22%,var(--line))}
+.task-select{display:none;align-items:center;justify-content:center;margin:0 2px 0 0}
+.task-select input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+#taskList.bulk-mode .task-select{display:flex}
+#taskList.bulk-mode .checkbtn{display:none}
+.task.selected{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent)}
+.bulk-bar{display:grid;grid-template-columns:auto auto minmax(120px,1fr) minmax(120px,1fr) minmax(150px,1.2fr) minmax(135px,.8fr) auto auto auto auto;gap:8px;align-items:center;margin-bottom:14px;padding:10px;border:1px solid var(--line);border-radius:15px;background:var(--card);box-shadow:var(--shadow)}
+.bulk-bar>b{white-space:nowrap;font-size:11px}.bulk-bar select,.bulk-bar input{min-width:0}
+.tasks-toolbar .filters{align-items:center}.tasks-toolbar #tagFilter{min-width:130px}
+.dashboard-customize{margin-top:8px;padding-left:0}
+.dashboard-hidden{display:none!important}
+.dashboard-modal>p{margin-top:-4px;color:var(--muted)}
+.dashboard-options{display:grid;gap:8px;margin:12px 0 5px}
+.dashboard-option{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:var(--card2)}
+.dashboard-option .check{margin:0}.dashboard-option .buttons{margin:0}
+.dashboard-option button{width:38px;min-height:36px;padding:0}
+@media(max-width:1100px){.bulk-bar{grid-template-columns:repeat(4,minmax(0,1fr))}.bulk-bar>b{grid-column:span 2}}
+

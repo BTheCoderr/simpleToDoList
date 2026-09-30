@@ -2,9 +2,9 @@
 
 Command Center is a private, local-first personal productivity PWA. User data stays on the device in IndexedDB; there is no account system or cloud database.
 
-## Current release: v6.2 Production QA
+## Next release: v7 Power User
 
-v6.2 is the freeze-candidate for the local-only edition. It adds production testing and resilience rather than new productivity features.
+v7 builds on the hardened local-only edition with three power-user workflows: task tags/contexts, bulk task actions, and a customizable Today dashboard. It keeps the same local IndexedDB schema and does not add a backend.
 
 ### Production QA
 
@@ -13,9 +13,7 @@ The release now has two quality layers:
 - **Fast regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backups, PWA metadata, CSS structure, and dependency/dead-code checks.
 - **Playwright browser QA** — real Chromium workflows covering task CRUD, Trash/restore, refresh persistence, recurring tasks, Planner, Board, Focus, Goals, Review, snapshots, export/import rejection, offline reload, 500/1,000/5,000-task stress, modal focus, and mobile large-text layout.
 
-Every pull request runs both gates. Every push to `master` also waits for Netlify to expose v6.2 and then runs a live production smoke test against `https://command-center-local.netlify.app`.
-
-The production smoke intentionally waits for the deployed version before testing, so a delayed hosting webhook cannot produce a false green release.
+Every pull request and push to `master` runs regression + browser E2E. While Netlify deploy credits are deferred, the live production smoke is manual and waits for v7 before testing `https://command-center-local.netlify.app`.
 
 ## Product structure
 
@@ -37,6 +35,13 @@ Top-level navigation stays intentionally small:
 Templates and Archive/Trash live under **Tasks**.
 
 Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
+
+### v7 power-user workflows
+
+- **Tags / contexts** — add reusable task tags such as `#calls`, `#errands`, or `#computer`. Quick Add still resolves a matching hashtag to a project, while extra/unmatched hashtags become task tags.
+- **Bulk task actions** — filter a task list, select visible tasks, and update status, priority, project, or due date together; Archive and Trash work on the selected set too.
+- **Custom Today dashboard** — hide/show and reorder Today's priorities, Habits, Projects, and Quick inbox. Layout preferences stay in localStorage and do not affect the IndexedDB schema.
+
 
 ## Frontend architecture
 
@@ -70,7 +75,7 @@ Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON i
 
 ## PWA
 
-- Offline cache: `command-center-v10`
+- Offline cache: `command-center-v11`
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG install icons
 - Dedicated 512×512 maskable icon
@@ -82,7 +87,7 @@ Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON i
 
 ## Accessibility
 
-v6.2 adds explicit modal focus trapping and returns focus to the control that opened a dialog. Existing skip navigation, reduced-motion support, focus-visible states, live status regions, and mobile touch targets remain in place. Browser QA also checks large-text/mobile overflow behavior.
+The hardened app includes explicit modal focus trapping and returns focus to the control that opened a dialog. Existing skip navigation, reduced-motion support, focus-visible states, live status regions, and mobile touch targets remain in place. Browser QA also checks large-text/mobile overflow behavior.
 
 ## Quality commands
 

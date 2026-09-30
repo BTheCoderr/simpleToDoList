@@ -23,7 +23,7 @@ async function openTasks(page){
   await expect(page.locator("#tasks")).toHaveClass(/active/);
 }
 
-async function createTask(page,{title,status="next",priority="medium",dueDate="",repeat="none",project=""}){
+async function createTask(page,{title,status="next",priority="medium",dueDate="",repeat="none",project="",tags=""}){
   if(!(await page.locator("#tasks").evaluate(el=>el.classList.contains("active")))) await openTasks(page);
   await page.locator('#tasks [data-add="task"]').click();
   await page.locator("#taskTitle").fill(title);
@@ -32,6 +32,7 @@ async function createTask(page,{title,status="next",priority="medium",dueDate=""
   if(dueDate) await page.locator("#taskDue").fill(dueDate);
   if(repeat!=="none") await page.locator("#taskRepeat").selectOption(repeat);
   if(project) await page.locator("#taskProject").selectOption({label:project});
+  if(tags) await page.locator("#taskTags").fill(tags);
   await page.getByRole("button",{name:"Save task"}).click();
   await expect(page.locator("#taskModal")).not.toHaveAttribute("open","");
 }
@@ -114,6 +115,53 @@ test("task CRUD, Trash restore, and refresh persistence",async ({page})=>{
 
   await page.getByRole("button",{name:"← Tasks"}).click();
   await expect(page.locator("#taskList")).toContainText("E2E task edited");
+});
+
+test("tags filter tasks and bulk actions update the selected set",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Call supplier",tags:"#calls #office"});
+  await createTask(page,{title:"Call accountant",tags:"#calls #finance"});
+  await createTask(page,{title:"Buy labels",tags:"#errands"});
+
+  await expect(page.locator("#tagFilter")).toContainText("#calls");
+  await page.locator("#tagFilter").selectOption("calls");
+  await expect(page.locator("#taskList")).toContainText("Call supplier");
+  await expect(page.locator("#taskList")).toContainText("Call accountant");
+  await expect(page.locator("#taskList")).not.toContainText("Buy labels");
+
+  await page.locator("#bulkToggle").click();
+  await page.locator("#bulkSelectAll").click();
+  await expect(page.locator("#bulkCount")).toHaveText("2");
+  await page.locator("#bulkStatus").selectOption("doing");
+  await page.locator("#bulkPriority").selectOption("high");
+  await page.locator("#bulkApply").click();
+
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    return tasks.filter(x=>["Call supplier","Call accountant"].includes(x.title)).map(x=>x.status+":"+x.priority).sort();
+  }).toEqual(["doing:high","doing:high"]);
+});
+
+test("Today dashboard visibility and order persist after reload",async ({page})=>{
+  await page.goto("/?view=today");
+  await assertAppBooted(page);
+  await page.locator("#customizeToday").click();
+  await page.locator('[data-dashboard-visible="habits"]').uncheck();
+  const moveCaptureUp=page.locator('[data-dashboard-move="capture"][data-direction="-1"]');
+  await moveCaptureUp.click();
+  await moveCaptureUp.click();
+  await moveCaptureUp.click();
+  await page.locator("#dashboardForm .primary").click();
+
+  await expect(page.locator('[data-dashboard-card="habits"]')).toHaveClass(/dashboard-hidden/);
+  let order=await page.locator('#today .grid > [data-dashboard-card]').evaluateAll(nodes=>nodes.map(n=>n.dataset.dashboardCard));
+  expect(order[0]).toBe("capture");
+
+  await page.reload();
+  await assertAppBooted(page);
+  await expect(page.locator('[data-dashboard-card="habits"]')).toHaveClass(/dashboard-hidden/);
+  order=await page.locator('#today .grid > [data-dashboard-card]').evaluateAll(nodes=>nodes.map(n=>n.dataset.dashboardCard));
+  expect(order[0]).toBe("capture");
 });
 
 test("recurrence spawns the next dated task",async ({page})=>{

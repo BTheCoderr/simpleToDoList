@@ -38,9 +38,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 6.2.0",()=>{
-  assert.equal(APP_VERSION,"6.2.0");
-  assert.equal(pkg.version,"6.2.0");
+test("release version is 7.0.0",()=>{
+  assert.equal(APP_VERSION,"7.0.0");
+  assert.equal(pkg.version,"7.0.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, and backup modules are imported",()=>{
@@ -64,7 +64,8 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v6\.2/);
+  assert.match(workflow,/Wait for Netlify v7/);
+  assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
 test("manifest has share target",()=>assert.equal(manifest.share_target?.action,"/?share=1"));
@@ -81,8 +82,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v10 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v10/);
+test("service worker cache is v11 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v11/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -140,6 +141,26 @@ test("review family links daily weekly analytics",()=>{
   assert.match(html,/data-view="analytics"/);
 });
 
+test("v7 task power-user controls are present",()=>{
+  for(const id of ["tagFilter","bulkToggle","bulkBar","bulkStatus","bulkPriority","bulkProject","bulkDue","bulkApply","bulkArchive","bulkTrash","taskTags"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.match(app,/function filteredTasks/);
+  assert.match(app,/function applyBulkChanges/);
+  assert.match(app,/function bulkArchive/);
+  assert.match(app,/function bulkTrash/);
+  assert.match(app,/tagPills/);
+});
+test("Today dashboard customization is local and schema-free",()=>{
+  for(const id of ["customizeToday","dashboardModal","dashboardOptions","dashboardForm","resetDashboard"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.equal((html.match(/data-dashboard-card=/g)||[]).length,4);
+  assert.match(app,/cc-today-layout-v1/);
+  assert.match(app,/function applyDashboardLayout/);
+  assert.match(app,/function moveDashboardCard/);
+});
+
 test("database schema remains explicit v4",()=>assert.equal(DB_VERSION,4));
 test("migration from v2 creates v3/v4 stores",()=>{
   const existing=new Set(["tasks","projects","notes","habits","activity","templates"]);
@@ -176,10 +197,13 @@ test("backup validator rejects old, partial, malformed, and oversized data",()=>
   assert.equal(validateBackupPayload({version:6,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]},MAX_IMPORT_BYTES+1).ok,false);
 });
 
-test("normalizeTask repairs missing arrays",()=>{
+test("normalizeTask repairs missing arrays and legacy tags",()=>{
   const task=normalizeTask({id:"x",title:"X",subtasks:null});
   assert.ok(Array.isArray(task.subtasks));
+  assert.deepEqual(task.tags,[]);
   assert.equal(task.repeat,"none");
+  const tagged=normalizeTask({id:"y",title:"Y",tags:["Calls","COMPUTER"]});
+  assert.deepEqual(tagged.tags,["calls","computer"]);
 });
 function recurrence(repeat,dueDate,extra={}){
   return nextOccurrence({repeat,dueDate,repeatInterval:1,repeatUntil:"",...extra},new Date("2026-09-30T12:00:00"));
@@ -208,6 +232,17 @@ test("Quick Add resolves project tags",()=>{
   const q=parseQuick("Call client tomorrow #work",[{id:"p1",name:"Win the Week",area:"Work"}],new Date("2026-09-30T12:00:00"));
   assert.equal(q.projectId,"p1");
   assert.equal(q.dueDate,"2026-10-01");
+});
+
+test("Quick Add separates project hashtags from context tags",()=>{
+  const q=parseQuick("Call client tomorrow #work #calls #computer",[{id:"p1",name:"Win the Week",area:"Work"}],new Date("2026-09-30T12:00:00"));
+  assert.equal(q.projectId,"p1");
+  assert.deepEqual(q.tags,["calls","computer"]);
+  assert.equal(q.title,"Call client");
+});
+test("unmatched hashtags remain task tags",()=>{
+  const q=parseQuick("Buy envelopes #errands #office",[]);
+  assert.deepEqual(q.tags,["errands","office"]);
 });
 
 test("goal progress rolls up project tasks",()=>{

@@ -9,12 +9,13 @@ export function normalizeTask(task){
     repeat:"none",
     repeatInterval:1,
     repeatUntil:"",
+    tags:[],
     subtasks:[],
     createdAt:new Date().toISOString(),
     completedAt:null,
     archivedAt:null,
     deletedAt:null
-  },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[]});
+  },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[]});
 }
 
 export function dateKey(date){
@@ -130,17 +131,20 @@ export function parseQuick(text,projects=[],now=new Date()){
     work=work.replace(new RegExp("\\b"+datePhrase.phrase.replace(" ","\\s+")+"\\b","i")," ");
   }
 
-  const tags=work.match(/#[a-z0-9_-]+/ig)||[];
-  if(tags.length){
-    const tag=tags[0].slice(1).toLowerCase().replace(/[-_]/g,"");
-    const project=projects.find(item=>{
+  const hashtags=work.match(/#[a-z0-9_-]+/ig)||[];
+  const taskTags=[];
+  hashtags.forEach(rawTag=>{
+    const clean=rawTag.slice(1).toLowerCase();
+    const normalized=clean.replace(/[-_]/g,"");
+    const project=!projectId&&projects.find(item=>{
       const name=(item.name||"").toLowerCase().replace(/[^a-z0-9]/g,"");
       const area=(item.area||"").toLowerCase().replace(/[^a-z0-9]/g,"");
-      return name===tag||name.startsWith(tag)||area===tag;
+      return name===normalized||name.startsWith(normalized)||area===normalized;
     });
     if(project)projectId=project.id;
-    work=work.replace(tags[0]," ");
-  }
+    else if(!taskTags.includes(clean))taskTags.push(clean);
+    work=work.replace(rawTag," ");
+  });
 
   work=work.replace(/\s+/g," ").trim();
   return {
@@ -154,6 +158,7 @@ export function parseQuick(text,projects=[],now=new Date()){
     repeat,
     repeatInterval,
     repeatUntil:"",
+    tags:taskTags,
     subtasks:[],
     createdAt:new Date(now).toISOString(),
     completedAt:null,
