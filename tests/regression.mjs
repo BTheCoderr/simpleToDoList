@@ -120,6 +120,8 @@ test("no selector accidentally uses single-id helper",()=>{
 });
 
 const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","settings"];
+test("selector helper names stay valid",()=>assert.doesNotMatch(app,/\$\$\$\(/));
+
 test("all feature views remain available",()=>requiredViews.forEach(id=>assert.ok(ids.includes(id),id+" missing")));
 test("sidebar remains simplified",()=>{
   const sidebar=html.slice(html.indexOf("<aside"),html.indexOf("</aside>"));
