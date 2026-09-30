@@ -24,7 +24,7 @@ import {
 import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 
 const SW_CACHE="command-center-v11";
-var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
+var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -89,6 +89,46 @@ function nav(){
   $("sidebar").classList.remove("open");if(state.view==="settings")setTimeout(refreshSystemInfo,0);
 }
 
+var SAVED_VIEWS_KEY="cc-saved-task-views-v1";
+function savedTaskViews(){
+  try{
+    var views=JSON.parse(localStorage.getItem(SAVED_VIEWS_KEY)||"[]");
+    return Array.isArray(views)?views.filter(function(v){return v&&v.id&&v.name}):[];
+  }catch(e){return []}
+}
+function writeSavedTaskViews(views){localStorage.setItem(SAVED_VIEWS_KEY,JSON.stringify(views))}
+function currentTaskView(){return {filter:state.filter,projectFilter:state.projectFilter||"",tagFilter:state.tagFilter||""}}
+function taskViewSummary(view){
+  var parts=[view.filter==="all"?"All tasks":view.filter.charAt(0).toUpperCase()+view.filter.slice(1)];
+  if(view.projectFilter)parts.push("Project: "+(pname(view.projectFilter)||"Unknown"));
+  if(view.tagFilter)parts.push("#"+view.tagFilter);
+  return parts.join(" · ");
+}
+function renderSavedViews(){
+  var views=savedTaskViews(),value=state.savedViewId;
+  $("savedViewSelect").innerHTML='<option value="">Saved views…</option>'+views.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(v.name)+'</option>'}).join("");
+  if(views.some(function(v){return v.id===value}))$("savedViewSelect").value=value;else state.savedViewId="";
+  $("deleteSavedView").classList.toggle("hidden",!state.savedViewId);
+}
+function openSaveView(){
+  var view=currentTaskView();$("savedViewForm").reset();$("savedViewSummary").textContent=taskViewSummary(view);openDialog($("savedViewModal"));setTimeout(function(){$("savedViewName").focus()},20)
+}
+function saveCurrentTaskView(e){
+  e.preventDefault();var name=$("savedViewName").value.trim();if(!name)return;
+  var views=savedTaskViews(),view=currentTaskView(),item={id:uid("view"),name:name,filter:view.filter,projectFilter:view.projectFilter,tagFilter:view.tagFilter};
+  views.push(item);writeSavedTaskViews(views);state.savedViewId=item.id;$("savedViewModal").close();renderSavedViews();toast("Saved view")
+}
+function applySavedView(id){
+  var view=savedTaskViews().find(function(v){return v.id===id});if(!view){state.savedViewId="";renderSavedViews();return}
+  state.savedViewId=id;state.filter=view.filter||"open";state.projectFilter=view.projectFilter||"";state.tagFilter=view.tagFilter||"";
+  $("[data-filter]").forEach(function(x){x.classList.toggle("active",x.dataset.filter===state.filter)});renderTasks();toast("View: "+view.name)
+}
+function deleteCurrentSavedView(){
+  if(!state.savedViewId)return;var views=savedTaskViews(),view=views.find(function(v){return v.id===state.savedViewId});if(!view)return;
+  if(!confirm('Delete saved view "'+view.name+'"?'))return;
+  writeSavedTaskViews(views.filter(function(v){return v.id!==state.savedViewId}));state.savedViewId="";renderSavedViews();toast("Saved view deleted")
+}
+
 function taskHTML(t){
   var p=pname(t.projectId),st=subtaskStats(t),sub=st.total?'<span class="pill">'+st.done+'/'+st.total+' checklist</span>':"",selected=state.selectedTaskIds.has(t.id);
   return `<div class="task-row" data-task-row="${t.id}">
@@ -134,7 +174,7 @@ function renderTasks(){
   var tagValue=state.tagFilter,tags=Array.from(new Set(base.flatMap(function(t){return t.tags||[]}))).sort();
   $("tagFilter").innerHTML='<option value="">All tags</option>'+tags.map(function(tag){return'<option value="'+esc(tag)+'">#'+esc(tag)+'</option>'}).join("");if(tags.includes(tagValue))$("tagFilter").value=tagValue;else state.tagFilter="";
   state.selectedTaskIds=new Set(Array.from(state.selectedTaskIds).filter(function(id){return base.some(function(t){return t.id===id})}));
-  var a=filteredTasks();$("taskList").innerHTML=a.length?a.map(taskHTML).join(""):'<div class="empty">Nothing here.</div>';renderBulkBar();
+  var a=filteredTasks();$("taskList").innerHTML=a.length?a.map(taskHTML).join(""):'<div class="empty">Nothing here.</div>';renderBulkBar();renderSavedViews();
 }
 async function applyBulkChanges(){
   var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
@@ -260,17 +300,25 @@ function openTask(t,prefillDate){
   $("taskStatus").value=t?t.status:"inbox";$("taskPriority").value=t?t.priority:"medium";$("taskProject").value=t?t.projectId||"":"";$("taskTags").value=t?(t.tags||[]).map(function(tag){return "#"+tag}).join(" "):"";
   $("taskDue").value=t?t.dueDate||"":(prefillDate||"");$("taskTime").value=t?t.dueTime||"":"";
   $("taskRepeat").value=t?t.repeat||"none":"none";$("taskRepeatInterval").value=t?Math.max(1,Number(t.repeatInterval)||1):1;$("taskRepeatUntil").value=t?t.repeatUntil||"":"";
+  var repeatDays=t&&Array.isArray(t.repeatWeekdays)?t.repeatWeekdays.map(Number):[];$("[data-repeat-day]").forEach(function(input){input.checked=repeatDays.includes(Number(input.dataset.repeatDay))});
   $("taskHeading").textContent=t?"Edit task":"New task";$("deleteTask").classList.toggle("hidden",!t);$("archiveTask").classList.toggle("hidden",!t);renderSubtasks();syncRepeatUI();openDialog($("taskModal"))
 }
 async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
-  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:$("taskRepeat").value,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null};
+  var repeat=$("taskRepeat").value,repeatWeekdays=$("[data-repeat-day]:checked").map(function(input){return Number(input.dataset.repeatDay)});
+  if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
+  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null};
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
   var t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,t.status==="done"?"next":"done");await load()
 }
-function syncRepeatUI(){var show=["custom_days","after_completion"].indexOf($("taskRepeat").value)>=0;$("repeatIntervalWrap").classList.toggle("hidden",!show)}
+function syncRepeatUI(){
+  var repeat=$("taskRepeat").value,showInterval=["custom_days","after_completion","custom_weeks"].includes(repeat);
+  $("repeatIntervalWrap").classList.toggle("hidden",!showInterval);
+  $("repeatIntervalUnit").textContent=repeat==="custom_weeks"?"weeks":"days";
+  $("repeatWeekdaysWrap").classList.toggle("hidden",repeat!=="selected_weekdays");
+}
 async function quickCapture(e){e.preventDefault();var v=$("capture").value.trim();if(!v)return;await createQuick(v);$("capture").value=""}
 
 function openSimple(kind,item){$("simpleForm").reset();$("simpleKind").value=kind;$("simpleId").value=item?item.id:"";$("simpleTitle").value=item?(item.title||item.name):"";$("simpleBody").value=item&&item.body?item.body:"";$("simpleMeta").value=item&&item.area?item.area:"";$("simpleGoal").innerHTML='<option value="">No goal</option>'+state.goals.filter(function(g){return g.status!=="done"}).map(function(g){return '<option value="'+g.id+'">'+esc(g.name)+'</option>'}).join("");$("simpleGoal").value=item&&item.goalId?item.goalId:"";$("simplePin").checked=!!(item&&item.pinned);$("simpleType").textContent=kind.toUpperCase();$("simpleHeading").textContent=(item?"Edit ":"New ")+kind;$("simpleBodyWrap").classList.toggle("hidden",kind!=="note");$("simplePinWrap").classList.toggle("hidden",kind!=="note");$("simpleMetaWrap").classList.toggle("hidden",kind!=="project");$("simpleGoalWrap").classList.toggle("hidden",kind!=="project");$("deleteSimple").classList.toggle("hidden",!item||kind==="project"||kind==="habit");openDialog($("simpleModal"))}
@@ -575,8 +623,8 @@ document.addEventListener("click",async function(e){
   if(b.dataset.toggleHabit)await toggleHabit(b.dataset.toggleHabit);
   if(b.dataset.deleteHabit&&confirm("Delete this habit?")){await del("habits",b.dataset.deleteHabit);await load()}
   if(b.dataset.deleteProject&&confirm("Delete this project? Tasks will stay.")){var id=b.dataset.deleteProject;await del("projects",id);for(var t of state.tasks.filter(function(x){return x.projectId===id}))await save("tasks",Object.assign({},t,{projectId:""}));await load()}
-  if(b.dataset.focusProject){state.projectFilter=b.dataset.focusProject;state.filter="open";state.view="tasks";nav();renderTasks()}
-  if(b.dataset.filter){state.projectFilter="";state.filter=b.dataset.filter;$$("[data-filter]").forEach(function(x){x.classList.toggle("active",x.dataset.filter===state.filter)});renderTasks()}
+  if(b.dataset.focusProject){state.savedViewId="";state.projectFilter=b.dataset.focusProject;state.filter="open";state.view="tasks";nav();renderTasks()}
+  if(b.dataset.filter){state.savedViewId="";state.projectFilter="";state.filter=b.dataset.filter;$$("[data-filter]").forEach(function(x){x.classList.toggle("active",x.dataset.filter===state.filter)});renderTasks()}
   if(b.dataset.search){var z=b.dataset.search.split(":");$("searchBox").classList.add("hidden");$("search").value="";if(z[0]==="task")openTask(state.tasks.find(function(x){return x.id===z[1]}));else if(z[0]==="note")openSimple("note",state.notes.find(function(x){return x.id===z[1]}));else if(z[0]==="goal")openGoal(state.goals.find(function(x){return x.id===z[1]}));else{state.view=z[0];nav()}}
   if(b.dataset.dateAdd)openTask(null,b.dataset.dateAdd);
   if(b.dataset.minutes){state.focus.minutes=Number(b.dataset.minutes);state.focus.remaining=state.focus.minutes*60;state.focus.running=false;state.focus.endAt=null;persistFocus();renderFocus()}
@@ -638,7 +686,11 @@ $("bulkClear").onclick=clearBulkSelection;
 $("bulkApply").onclick=applyBulkChanges;
 $("bulkArchive").onclick=bulkArchive;
 $("bulkTrash").onclick=bulkTrash;
-$("tagFilter").onchange=function(){state.tagFilter=this.value;renderTasks()};
+$("tagFilter").onchange=function(){state.savedViewId="";state.tagFilter=this.value;renderTasks()};
+$("savedViewSelect").onchange=function(){if(this.value)applySavedView(this.value);else{state.savedViewId="";renderSavedViews()}};
+$("saveCurrentView").onclick=openSaveView;
+$("savedViewForm").onsubmit=saveCurrentTaskView;
+$("deleteSavedView").onclick=deleteCurrentSavedView;
 $("quickHelp").onclick=function(){openQuick()};
 $("captureForm").onsubmit=quickCapture;
 $("quickInput").oninput=quickPreview;
