@@ -793,7 +793,7 @@ $("weeklyPlanForm").onsubmit=planNextWeek;
 $("archiveCompleted").onclick=archiveCompleted;
 $("deleteSimple").onclick=async function(){var k=$("simpleKind").value,id=$("simpleId").value;if(id&&confirm("Delete this "+k+"?")){await del(k==="note"?"notes":k+"s",id);$("simpleModal").close();await load()}};
 $("search").oninput=function(e){search(e.target.value)};
-$("[data-planner-mode]").forEach(function(b){b.onclick=function(){state.plannerMode=b.dataset.plannerMode;localStorage.setItem("cc-planner-mode",state.plannerMode);renderCalendar()}});
+$$("[data-planner-mode]").forEach(function(b){b.onclick=function(){state.plannerMode=b.dataset.plannerMode;localStorage.setItem("cc-planner-mode",state.plannerMode);renderCalendar()}});
 function shiftPlanner(amount){var d=new Date(state.calendarCursor),mode=state.plannerMode||"month";if(mode==="month")d.setMonth(d.getMonth()+amount);else if(mode==="week")d.setDate(d.getDate()+7*amount);else d.setDate(d.getDate()+amount);state.calendarCursor=d;renderCalendar()}
 $("calPrev").onclick=function(){shiftPlanner(-1)};
 $("calNext").onclick=function(){shiftPlanner(1)};
