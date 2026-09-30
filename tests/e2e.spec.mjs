@@ -34,7 +34,7 @@ async function createTask(page,{title,status="next",priority="medium",dueDate=""
     await page.locator("#taskRepeat").selectOption(repeat);
     if(["custom_days","after_completion","custom_weeks"].includes(repeat))await page.locator("#taskRepeatInterval").fill(String(repeatInterval));
     if(repeat==="selected_weekdays"){
-      for(const day of repeatDays)await page.locator('[data-repeat-day="'+day+'"]').check();
+      for(const day of repeatDays)await page.locator('[data-repeat-weekday="'+day+'"]').check();
     }
   }
   if(project) await page.locator("#taskProject").selectOption({label:project});
@@ -185,12 +185,12 @@ test("saved task views persist and restore combined filters",async ({page})=>{
   await page.locator("#saveCurrentView").click();
   await page.locator("#savedViewName").fill("Calls in progress");
   await page.locator("#savedViewForm .primary").click();
-  await expect(page.locator("#savedViewSelect")).toContainText("Calls in progress");
+  await expect(page.locator("#savedViews")).toContainText("Calls in progress");
 
   await page.locator('[data-filter="all"]').click();
   await page.locator("#tagFilter").selectOption("");
   await page.reload();
-  await page.locator("#savedViewSelect").selectOption({label:"Calls in progress"});
+  await page.locator("#savedViews").getByRole("button",{name:"Calls in progress",exact:true}).click();
 
   await expect(page.locator("#taskList")).toContainText("Saved calls doing");
   await expect(page.locator("#taskList")).not.toContainText("Saved calls next");
