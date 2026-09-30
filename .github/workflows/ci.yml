@@ -59,16 +59,16 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Wait for Netlify v7.2.1
+      - name: Wait for Netlify v7.3
         run: |
           for i in {1..36}; do
-            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="7.2.1"'; then
-              echo "v7.2.1 is live"
+            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="7.3.0"'; then
+              echo "v7.3 is live"
               exit 0
             fi
             sleep 5
           done
-          echo "Timed out waiting for Netlify v7.2.1"
+          echo "Timed out waiting for Netlify v7.3"
           exit 1
       - name: Smoke test production
         env:
