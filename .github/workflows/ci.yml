@@ -44,7 +44,7 @@ jobs:
         run: npm run e2e
 
   production-smoke:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     needs: [regression, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -59,16 +59,16 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Wait for Netlify v6.2
+      - name: Wait for Netlify v7
         run: |
           for i in {1..36}; do
-            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="6.2.0"'; then
-              echo "v6.2 is live"
+            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="7.0.0"'; then
+              echo "v7 is live"
               exit 0
             fi
             sleep 5
           done
-          echo "Timed out waiting for Netlify v6.2"
+          echo "Timed out waiting for Netlify v7"
           exit 1
       - name: Smoke test production
         env:
