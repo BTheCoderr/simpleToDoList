@@ -120,7 +120,7 @@ export function parseQuick(text,projects=[],now=new Date()){
   if(priorityMatch){priority=priorityMatch[1].toLowerCase();work=work.replace(priorityMatch[0]," ")}
 
   const weekdayNames="(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)";
-  const everyWeekdays=work.match(new RegExp("\\bevery\\s+("+weekdayNames+"(?:\\s*[/,&]\\s*"+weekdayNames+")+)\\b","i"));
+  const everyWeekdays=work.match(new RegExp("\\bevery\\s+("+weekdayNames+"(?:\\s*(?:,|/|&|and)\\s*"+weekdayNames+")*)\\b","i"));
   const everyWeeks=work.match(/\bevery\s+(\d+)\s+weeks?\b/i);
   const everyDays=work.match(/\bevery\s+(\d+)\s+days?\b/i);
   if(everyWeekdays){
