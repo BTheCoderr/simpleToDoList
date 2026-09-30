@@ -1,5 +1,5 @@
-var DB="command-center-v2",VER=3,STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots"],DATA_STORES=["tasks","projects","notes","habits","activity","templates","goals"];
-var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focusPreset:25,focus:null};
+var APP_VERSION="6.0.0",DB="command-center-v2",VER=4,SW_CACHE="command-center-v8",STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots","meta"],DATA_STORES=["tasks","projects","notes","habits","activity","templates","goals"],MAX_SNAPSHOT_BYTES=4*1024*1024,MAX_SNAPSHOTS=7;
+var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focusPreset:25,focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -11,16 +11,30 @@ var builtInTemplates=[
   {id:"builtin-errands",name:"Errands Run",title:"Run errands",description:"Quick reusable errands checklist.",priority:"medium",projectId:"",subtasks:["Make list","Plan route","Complete stops","Put receipts away"]}
 ];
 
+var MIGRATIONS={
+  1:["tasks","projects","notes","habits","activity"],
+  2:["templates"],
+  3:["goals","snapshots"],
+  4:["meta"]
+};
+function ensureStore(db,name){if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath:"id"})}
+function runMigrations(db,tx,oldVersion,newVersion){
+  for(var v=oldVersion+1;v<=newVersion;v++)(MIGRATIONS[v]||[]).forEach(function(name){ensureStore(db,name)});
+  if(db.objectStoreNames.contains("meta"))tx.objectStore("meta").put({id:"schema",version:newVersion,appVersion:APP_VERSION,upgradedAt:new Date().toISOString()});
+}
+
 function uid(p){return p+"-"+Date.now()+"-"+Math.random().toString(36).slice(2,7)}
-function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB,VER);r.onupgradeneeded=function(){STORES.forEach(function(s){if(!r.result.objectStoreNames.contains(s))r.result.createObjectStore(s,{keyPath:"id"})})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}})}
+function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB,VER);r.onupgradeneeded=function(e){runMigrations(r.result,r.transaction,e.oldVersion,e.newVersion||VER)};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)};r.onblocked=function(){rej(new Error("Database upgrade blocked by another open Command Center tab"))}})}
 function all(store){return openDB().then(function(db){return new Promise(function(res,rej){var r=db.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=function(){db.close();res(r.result)};r.onerror=function(){db.close();rej(r.error)}})})}
+function readStores(names){return openDB().then(function(db){return new Promise(function(res,rej){var out={},tx=db.transaction(names,"readonly");names.forEach(function(name){var r=tx.objectStore(name).getAll();r.onsuccess=function(){out[name]=r.result||[]}});tx.oncomplete=function(){db.close();res(out)};tx.onerror=function(){var e=tx.error;db.close();rej(e)};tx.onabort=function(){var e=tx.error||new Error("Read transaction aborted");db.close();rej(e)}})})}
 function save(store,val){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).put(val);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
+function saveMany(store,values){if(!values||!values.length)return Promise.resolve();return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite"),os=tx.objectStore(store);values.forEach(function(v){os.put(v)});tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
 function del(store,id){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).delete(id);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
 function clear(store){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).clear();tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
-async function seed(){var count=0;for(var s of ["tasks","projects","notes","habits"])count+=(await all(s)).length;if(count)return;for(var k of ["projects","tasks","notes","habits"])for(var x of defaults[k])await save(k,x)}
-async function load(){await seed();state.tasks=(await all("tasks")).map(normalizeTask);state.projects=(await all("projects")).map(function(p){return Object.assign({goalId:""},p)});state.notes=await all("notes");state.habits=await all("habits");state.activity=await all("activity");state.templates=await all("templates");state.goals=await all("goals");state.snapshots=await all("snapshots");render()}
+async function seed(){var data=await readStores(["tasks","projects","notes","habits"]),count=data.tasks.length+data.projects.length+data.notes.length+data.habits.length;if(count)return;for(var k of ["projects","tasks","notes","habits"])await saveMany(k,defaults[k])}
+async function load(){await seed();var data=await readStores(STORES);state.tasks=(data.tasks||[]).map(normalizeTask);state._active=state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt});state.projects=(data.projects||[]).map(function(p){return Object.assign({goalId:""},p)});state.notes=data.notes||[];state.habits=data.habits||[];state.activity=data.activity||[];state.templates=data.templates||[];state.goals=data.goals||[];state.snapshots=data.snapshots||[];render()}
 function normalizeTask(t){return Object.assign({description:"",status:"inbox",priority:"medium",projectId:"",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null},t,{subtasks:Array.isArray(t.subtasks)?t.subtasks:[]})}
-function activeTasks(){return state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt})}
+function activeTasks(){return state._active||[]}
 function visibleTasks(){return activeTasks()}
 function esc(v){return String(v||"").replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]})}
 function today(){var d=new Date();return dateKey(d)}
