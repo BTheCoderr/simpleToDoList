@@ -49,7 +49,7 @@ function subtaskStats(t){var a=t.subtasks||[],done=a.filter(function(x){return x
 function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
-  $(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===state.view;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===state.view;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
   if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Shutdown",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
