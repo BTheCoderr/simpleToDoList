@@ -1,20 +1,87 @@
 {
-  "name":"Command Center",
-  "short_name":"Command",
-  "id":"/",
-  "description":"Private local-first personal productivity command center",
-  "start_url":"/",
-  "scope":"/",
-  "display":"standalone",
-  "display_override":["standalone","minimal-ui"],
-  "orientation":"portrait-primary",
-  "background_color":"#0b1020",
-  "theme_color":"#0b1020",
-  "categories":["productivity","utilities"],
-  "icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}],
-  "shortcuts":[
-    {"name":"Today","short_name":"Today","url":"/?view=today","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]},
-    {"name":"Quick Add","short_name":"Add","url":"/?quick=1","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]},
-    {"name":"Focus","short_name":"Focus","url":"/?view=focus","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]}
-  ]
+  "name": "Command Center",
+  "short_name": "Command",
+  "id": "/",
+  "description": "Private local-first personal productivity command center",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "url": "/?view=today",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Quick Add",
+      "short_name": "Add",
+      "url": "/?quick=1",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Focus",
+      "short_name": "Focus",
+      "url": "/?view=focus",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Daily Shutdown",
+      "short_name": "Shutdown",
+      "url": "/?view=shutdown",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/?share=1",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
