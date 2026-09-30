@@ -38,9 +38,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.2.0",()=>{
-  assert.equal(APP_VERSION,"7.2.0");
-  assert.equal(pkg.version,"7.2.0");
+test("release version is 7.3.0",()=>{
+  assert.equal(APP_VERSION,"7.3.0");
+  assert.equal(pkg.version,"7.3.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, and backup modules are imported",()=>{
@@ -64,7 +64,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v7.2/);
+  assert.match(workflow,/Wait for Netlify v7.3/);
   assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
@@ -82,8 +82,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v13 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v13/);
+test("service worker cache is v14 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v14/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -119,7 +119,7 @@ test("no selector accidentally uses single-id helper",()=>{
   assert.deepEqual(bad,[]);
 });
 
-const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","settings"];
+const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","history","settings"];
 test("selector helper names stay valid",()=>assert.doesNotMatch(app,/\$\$\$\(/));
 
 test("all feature views remain available",()=>requiredViews.forEach(id=>assert.ok(ids.includes(id),id+" missing")));
@@ -129,6 +129,7 @@ test("sidebar remains simplified",()=>{
   assert.doesNotMatch(sidebar,/data-view="archive"/);
   assert.doesNotMatch(sidebar,/data-view="shutdown"/);
   assert.doesNotMatch(sidebar,/data-view="analytics"/);
+  assert.doesNotMatch(sidebar,/data-view="history"/);
   assert.match(sidebar,/data-view="review"/);
 });
 test("task utilities link to templates and archive",()=>{
@@ -136,11 +137,12 @@ test("task utilities link to templates and archive",()=>{
   assert.match(tasks,/data-view="templates"/);
   assert.match(tasks,/data-view="archive"/);
 });
-test("review family links daily weekly analytics",()=>{
+test("review family links daily weekly analytics and history",()=>{
   const reviewTabs=[...html.matchAll(/class="view-tabs"/g)].length;
-  assert.equal(reviewTabs,3);
+  assert.equal(reviewTabs,4);
   assert.match(html,/data-view="shutdown"/);
   assert.match(html,/data-view="analytics"/);
+  assert.match(html,/data-view="history"/);
 });
 
 test("v7 task power-user controls are present",()=>{
@@ -202,6 +204,27 @@ test("v7.2 Kanban order persists on task records without a schema bump",()=>{
   assert.match(app,/function moveBoardTask/);
   assert.match(app,/boardOrder=\(i\+1\)\*100/);
   assert.match(app,/boardOrder:old\?old\.boardOrder:null/);
+  assert.equal(DB_VERSION,4);
+});
+
+test("v7.3 History is nested under Review and supports task timelines",()=>{
+  for(const id of ["history","historySearch","historyType","historyCount","historyList","taskHistoryWrap","taskHistoryList"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.match(app,/function renderHistory/);
+  assert.match(app,/function renderTaskHistory/);
+  assert.match(app,/function activityMatchesTask/);
+  assert.match(app,/taskId:t\.id/);
+  assert.match(app,/taskIds:items\.map/);
+});
+test("v7.3 CSV and Markdown exports are wired without a schema bump",()=>{
+  for(const id of ["exportCsv","exportMarkdown"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.match(app,/function exportTasksCsv/);
+  assert.match(app,/function exportWorkspaceMarkdown/);
+  assert.match(app,/command-center-tasks-/);
+  assert.match(app,/command-center-workspace-/);
   assert.equal(DB_VERSION,4);
 });
 
