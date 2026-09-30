@@ -82,10 +82,20 @@
       </section>
 
       <section id="planner" class="view">
-        <div class="toolbar"><div><p>Put deadlines on the map. Tap any day to create a task there.</p></div><div class="buttons compact"><button id="calPrev">‹</button><button id="calToday">Today</button><button id="calNext">›</button></div></div>
+        <div class="toolbar planner-toolbar">
+          <div><p>Put deadlines on the map. Drag dated or unscheduled tasks onto a day to reschedule them.</p></div>
+          <div class="planner-controls">
+            <div class="view-tabs planner-view-tabs" aria-label="Planner view">
+              <button type="button" data-planner-mode="month" class="active">Month</button>
+              <button type="button" data-planner-mode="week">Week</button>
+              <button type="button" data-planner-mode="day">Day</button>
+            </div>
+            <div class="buttons compact"><button id="calPrev" aria-label="Previous period">‹</button><button id="calToday">Today</button><button id="calNext" aria-label="Next period">›</button></div>
+          </div>
+        </div>
         <div class="panel calendar-panel">
           <div class="calendar-title"><h2 id="calendarTitle"></h2></div>
-          <div class="weekday-row"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+          <div id="plannerWeekdays" class="weekday-row"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
           <div id="calendarGrid" class="calendar-grid"></div>
         </div>
         <div class="panel planner-unscheduled"><div class="panelhead"><div><small class="caps">NO DATE YET</small><h3>Unscheduled</h3></div></div><div id="unscheduledTasks" class="stack"></div></div>
@@ -248,6 +258,10 @@
         <label>Project<select id="taskProject"><option value="">No project</option></select></label>
         <label>Tags / contexts<input id="taskTags" maxlength="160" placeholder="#calls #computer"></label>
         <label>Due date<input id="taskDue" type="date"></label>
+        <div class="quick-reschedule">
+          <small>Quick reschedule</small>
+          <div class="buttons compact"><button type="button" data-reschedule-preset="today">Today</button><button type="button" data-reschedule-preset="tomorrow">Tomorrow</button><button type="button" data-reschedule-preset="week">+1 week</button><button type="button" data-reschedule-preset="clear">Clear</button></div>
+        </div>
         <label>Due time<input id="taskTime" type="time"></label>
         <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="selected_weekdays">Selected weekdays</option><option value="weekly">Weekly</option><option value="custom_weeks">Every X weeks</option><option value="monthly">Monthly</option><option value="custom_days">Every X days</option><option value="after_completion">X days after completion</option></select></label>
         <label id="repeatIntervalWrap">Every<input id="taskRepeatInterval" type="number" min="1" max="365" value="1"><small id="repeatIntervalUnit">days</small></label>
