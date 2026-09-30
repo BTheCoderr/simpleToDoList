@@ -2,13 +2,22 @@
 
 Command Center is a private, local-first personal productivity PWA. User data stays on the device in IndexedDB; there is no account system or cloud database.
 
-## Current release: v6.1 Cleanup & Simplify
+## Current release: v6.2 Production QA
 
-v6.1 adds no new product features. It simplifies the app and codebase while preserving all v6 behavior.
+v6.2 is the freeze-candidate for the local-only edition. It adds production testing and resilience rather than new productivity features.
 
-### Product structure
+### Production QA
 
-Top-level navigation is intentionally smaller:
+The release now has two quality layers:
+
+- **Fast regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backups, PWA metadata, CSS structure, and dependency/dead-code checks.
+- **Playwright browser QA** — real Chromium workflows covering task CRUD, Trash/restore, refresh persistence, recurring tasks, Planner, Board, Focus, Goals, Review, snapshots, export/import rejection, offline reload, 500/1,000/5,000-task stress, modal focus, and mobile large-text layout.
+
+Every pull request runs both gates. Every push to `master` also waits for Netlify to expose v6.2 and then runs a live production smoke test against `https://command-center-local.netlify.app`.
+
+## Product structure
+
+Top-level navigation stays intentionally small:
 
 - Today
 - Tasks
@@ -23,24 +32,21 @@ Top-level navigation is intentionally smaller:
 - Command
 - Settings
 
-Templates and Archive/Trash now live under **Tasks**.
+Templates and Archive/Trash live under **Tasks**.
 
-Daily Shutdown, Weekly Review, and Analytics now live under one **Review** family.
-
-All existing feature views remain available; they are simply grouped more logically.
+Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
 
 ## Frontend architecture
-
-The active app is dependency-free browser JavaScript split by responsibility:
 
 - `public/app.js` — UI rendering, dialogs, events, workflow orchestration
 - `public/core.js` — pure task normalization, dates, recurrence, Quick Add parsing, goal progress
 - `public/storage.js` — IndexedDB schema, migrations, reads/writes, storage constants
-- `public/sw.js` — offline app shell
+- `public/backup.js` — backup compatibility and import safety validation
+- `public/sw.js` — offline app shell and controlled update activation
 - `public/style.css` — shared layout and responsive styles
 - `public/index.html` — application shell
 
-The old database name `command-center-v2` is retained **on purpose**. Renaming it would make existing local data appear missing.
+The IndexedDB name `command-center-v2` is retained **on purpose**. Renaming it would make existing local data appear missing.
 
 ## Local storage model
 
@@ -58,41 +64,38 @@ IndexedDB schema v4 stores:
 
 Explicit migrations upgrade older schemas in place.
 
-Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON export remains the portable full-backup format.
+Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON import is capped at 8 MB and validates backup version, required stores, and record shape **before** any local data is cleared.
 
 ## PWA
 
-- Offline cache: `command-center-v9`
+- Offline cache: `command-center-v10`
+- 180×180 Apple touch icon
+- 192×192 and 512×512 PNG install icons
+- Dedicated 512×512 maskable icon
 - Web Share Target support
 - Home Screen install support
-- Natural device orientation; portrait is no longer forced
-- Core application modules are cached for offline use
+- Natural device orientation
+- Controlled update UX: a waiting service worker shows **New version ready → Reload** instead of silently replacing the active app
+- Core application modules and install icons are cached for offline use
 
-## Quality gate
+## Accessibility
 
-The app uses a zero-dependency Node regression suite.
+v6.2 adds explicit modal focus trapping and returns focus to the control that opened a dialog. Existing skip navigation, reduced-motion support, focus-visible states, live status regions, and mobile touch targets remain in place. Browser QA also checks large-text/mobile overflow behavior.
+
+## Quality commands
 
 ```bash
 npm test
 npm run check
+npm run e2e
 ```
 
-The gate verifies:
+To smoke-test production directly:
 
-- module syntax
-- DOM wiring and duplicate IDs
-- simplified navigation structure
-- IndexedDB migrations
-- recurring-task date behavior
-- Smart Quick Add parsing
-- goal progress rollups
-- PWA manifest/share target
-- service-worker cache version
-- accessibility basics
-- CSS brace balance and consolidated mobile layer
-- removal of dead/redundant release-era code
-
-Netlify runs `npm run build`, which runs the same release gate before production publish. GitHub Actions runs the gate on pull requests and pushes to `master`.
+```bash
+PLAYWRIGHT_BASE_URL=https://command-center-local.netlify.app \
+  npx playwright test tests/production.spec.mjs
+```
 
 ## Run locally
 
@@ -104,4 +107,4 @@ Then open http://localhost:4000.
 
 ## Deploy
 
-Netlify publishes `public`. No secrets, database service, or environment variables are required.
+Netlify publishes `public`. No secrets, cloud database, or environment variables are required for the application itself.
