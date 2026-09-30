@@ -1,5 +1,11 @@
 # Command Center
 
+<!-- repo-intro:start -->
+**Project snapshot:** Command Center is a local-first productivity PWA that turns a once-simple to-do project into a full personal operating system with planning, focus, goals, habits, review workflows, backups, and browser QA.
+
+**What it demonstrates:** JavaScript · IndexedDB · PWA/offline · Playwright · local-first product architecture.
+<!-- repo-intro:end -->
+
 Command Center is a private, local-first personal productivity PWA. User data stays on the device in IndexedDB; there is no account system or cloud database.
 
 ## Next release: v7.1 Smart Views + Scheduling
