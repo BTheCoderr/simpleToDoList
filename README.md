@@ -44,6 +44,13 @@ Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
 
 ### v7.1 smart views + scheduling
 
+- **Saved Views** — save the current Tasks status, project, and tag filters locally, then restore the exact combination from a one-tap chip.
+- **Specific weekday recurrence** — schedule a repeating task for one or more weekdays such as Monday / Wednesday / Friday.
+- **Every X weeks** — use recurring intervals such as every 2 or 3 weeks.
+- **Smarter Quick Add** — understands natural recurrence phrases including `every 2 weeks`, `every Tuesday`, and `every Monday, Wednesday and Friday`.
+
+### v7.1 smart views + scheduling
+
 - **Saved Task Views** — save the current status + project + tag filter combination under a name, then reopen it in one tap. Saved views live in localStorage.
 - **Selected weekday recurrence** — repeat on explicit days such as Mon/Wed/Fri.
 - **Every X weeks** — recurring tasks can now run every 2, 3, 4, etc. weeks.
