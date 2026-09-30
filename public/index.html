@@ -148,7 +148,7 @@
       </section>
 
       <section id="shutdown" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown" class="active">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown" class="active">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history">History</button></div>
         <div class="shutdown-hero panel">
           <small class="caps">END THE DAY ON PURPOSE</small>
           <h2>Daily Shutdown</h2>
@@ -177,7 +177,7 @@
       </section>
 
       <section id="review" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review" class="active">Weekly</button><button data-view="analytics">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review" class="active">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history">History</button></div>
         <div class="review-hero panel">
           <small class="caps">WEEKLY RESET</small>
           <h2>Review the week. Choose the next one.</h2>
@@ -215,15 +215,27 @@
       </section>
 
       <section id="analytics" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics" class="active">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics" class="active">Analytics</button><button data-view="history">History</button></div>
         <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Focus minutes</span><b id="aFocus">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
         <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
+      </section>
+
+      <section id="history" class="view">
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history" class="active">History</button></div>
+        <div class="toolbar history-toolbar">
+          <div><p>A local audit trail of meaningful changes in your workspace.</p></div>
+          <div class="filters"><select id="historyFilter" aria-label="Filter activity history"><option value="">All activity</option></select><input id="historySearch" type="search" placeholder="Search history" aria-label="Search activity history"></div>
+        </div>
+        <div class="panel">
+          <div id="historyList" class="history-list" aria-live="polite"></div>
+        </div>
       </section>
 
       <section id="settings" class="view">
         <div class="settings">
           <div class="panel"><h3>Appearance</h3><p>Theme is saved only on this device.</p><div class="buttons"><button id="light">Light</button><button id="dark">Dark</button></div></div>
-          <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
+          <div class="panel"><h3>Backup & exports</h3><p>JSON is the full recovery backup. CSV and Markdown are human-readable exports.</p><div class="buttons"><button id="export">Export JSON</button><button id="exportCsv">Export tasks CSV</button><button id="exportMarkdown">Export workspace Markdown</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
+          <div class="panel"><h3>Privacy lock</h3><p>Optional local privacy screen for this device. It is a convenience lock, not encryption of IndexedDB.</p><div id="privacyLockStatus" class="privacy-lock-status"></div><div class="buttons"><button id="enablePrivacyLock">Enable lock</button><button id="changePrivacyLock" class="hidden">Change code</button><button id="disablePrivacyLock" class="hidden">Disable lock</button><button id="lockNow" class="hidden">Lock now</button></div></div>
           <div class="panel"><h3>Automatic snapshots</h3><p>Command Center keeps rotating local recovery points before risky changes and once per day.</p><div class="buttons"><button id="createSnapshot">Create snapshot now</button></div><div id="snapshotList" class="snapshot-list" aria-live="polite"></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
@@ -368,6 +380,27 @@
       <div class="modalactions"><span></span><span></span><button type="button" data-close="shareModal">Cancel</button><button class="primary">Save</button></div>
     </form>
   </dialog>
+
+  <dialog id="privacySetupModal">
+    <form id="privacySetupForm" class="modal">
+      <div class="modalhead"><div><small class="caps">LOCAL PRIVACY</small><h2 id="privacySetupHeading">Set privacy code</h2></div><button type="button" data-close="privacySetupModal" class="icon" aria-label="Close">×</button></div>
+      <p class="hint">Use at least 4 characters. The code is salted and hashed locally; it is never sent anywhere.</p>
+      <label>Privacy code<input id="privacyCode" type="password" minlength="4" autocomplete="new-password" required></label>
+      <label>Confirm code<input id="privacyCodeConfirm" type="password" minlength="4" autocomplete="new-password" required></label>
+      <div class="modalactions"><span></span><span></span><button type="button" data-close="privacySetupModal">Cancel</button><button class="primary">Save code</button></div>
+    </form>
+  </dialog>
+
+  <div id="privacyLockScreen" class="privacy-screen hidden" role="dialog" aria-modal="true" aria-labelledby="privacyLockTitle">
+    <form id="privacyUnlockForm" class="privacy-card">
+      <div class="brand"><span>C</span><div><b>Command Center</b><small>PRIVATE · LOCAL-FIRST</small></div></div>
+      <h2 id="privacyLockTitle">Workspace locked</h2>
+      <p>Enter your local privacy code to continue.</p>
+      <label>Privacy code<input id="privacyUnlockCode" type="password" autocomplete="current-password" required></label>
+      <small id="privacyUnlockError" class="privacy-error" aria-live="polite"></small>
+      <button class="primary">Unlock</button>
+    </form>
+  </div>
 
   <dialog id="onboardingModal" class="onboarding-dialog">
     <div class="onboarding">
