@@ -455,7 +455,12 @@ document.addEventListener("click",async function(e){
   if(b.dataset.templateEdit)openTemplate(state.templates.find(function(x){return x.id===b.dataset.templateEdit}));
   if(b.dataset.archiveFilter){state.archiveFilter=b.dataset.archiveFilter;renderArchive()}
   if(b.dataset.restoreTask)await restoreTask(b.dataset.restoreTask);
-  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}
+  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){await createSnapshot("Before permanent delete");await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}
+  if(b.dataset.editGoal)openGoal(state.goals.find(function(g){return g.id===b.dataset.editGoal}));
+  if(b.dataset.goalProject){openSimple("project");$("simpleGoal").value=b.dataset.goalProject}
+  if(b.dataset.restoreSnapshot)await restoreSnapshot(b.dataset.restoreSnapshot);
+  if(b.dataset.deleteSnapshot){await del("snapshots",b.dataset.deleteSnapshot);state.snapshots=await all("snapshots");renderSnapshots();toast("Snapshot removed")}
+  if(b.dataset.paletteAction)await runPaletteAction(b.dataset.paletteAction);
 });
 var swipeStart=null;
 document.addEventListener("touchstart",function(e){
@@ -477,6 +482,7 @@ document.addEventListener("dragstart",function(e){var card=e.target.closest("[da
 $$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function(e){e.preventDefault();col.classList.add("dragover")});col.addEventListener("dragleave",function(){col.classList.remove("dragover")});col.addEventListener("drop",async function(e){e.preventDefault();col.classList.remove("dragover");var id=e.dataTransfer.getData("text/plain"),t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,col.dataset.dropStatus);await load();toast("Moved to "+t.status)})});
 
 $("menu").onclick=function(){$("sidebar").classList.toggle("open")};
+$("openPalette").onclick=openPalette;
 $("addTask").onclick=function(){openQuick()};
 $("quickHelp").onclick=function(){openQuick()};
 $("captureForm").onsubmit=quickCapture;
@@ -486,6 +492,12 @@ $("taskForm").onsubmit=saveTask;
 $("addSubtask").onclick=function(){var v=$("newSubtask").value.trim();if(!v)return;editingSubtasks.push({id:uid("s"),title:v,done:false});$("newSubtask").value="";renderSubtasks()};
 $("newSubtask").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$("addSubtask").click()}});
 $("simpleForm").onsubmit=saveSimple;
+$("goalForm").onsubmit=saveGoal;
+$("newGoal").onclick=function(){openGoal()};
+$("deleteGoal").onclick=async function(){var id=$("goalId").value;if(id){$("goalModal").close();await deleteGoalById(id)}};
+$("shareForm").onsubmit=saveSharedItem;
+$("shutdownForm").onsubmit=completeShutdown;
+$("createSnapshot").onclick=async function(){await createSnapshot("Manual snapshot");toast("Snapshot created")};
 $("deleteTask").onclick=async function(){var id=$("taskId").value;if(id&&confirm("Move this task to Trash?")){$("taskModal").close();await trashTask(id)}};
 $("archiveTask").onclick=async function(){var id=$("taskId").value;if(id){$("taskModal").close();await archiveTaskById(id)}};
 $("saveTemplateFromTask").onclick=saveCurrentAsTemplate;
@@ -505,14 +517,24 @@ $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();
 $("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}await setTaskStatus(t,"done");pauseFocus();await load();toast("Task completed")};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
-$("reset").onclick=async function(){if(!confirm("Reset all local data? Export a backup first if you want to keep it."))return;for(var s of STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset")};
+$("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;await createSnapshot("Before workspace reset");for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
 $("replayTour").onclick=function(){openOnboarding(true)};
 $("runDiagnostics").onclick=runDiagnostics;
 $("onboardingSkip").onclick=finishOnboarding;
 $("onboardingBack").onclick=function(){if(onboardingStep>0){onboardingStep--;renderOnboarding()}};
 $("onboardingNext").onclick=function(){if(onboardingStep<onboardingSlides.length-1){onboardingStep++;renderOnboarding()}else finishOnboarding()};
 
-document.addEventListener("keydown",function(e){if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search").focus()}if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();openQuick()}if(e.key.toLowerCase()==="q"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)){openQuick()}});
+$("paletteInput").oninput=function(){paletteIndex=0;renderPalette()};
+$("paletteInput").onkeydown=async function(e){
+  if(e.key==="ArrowDown"){e.preventDefault();if(paletteItems.length){paletteIndex=(paletteIndex+1)%paletteItems.length;renderPalette()}}
+  else if(e.key==="ArrowUp"){e.preventDefault();if(paletteItems.length){paletteIndex=(paletteIndex-1+paletteItems.length)%paletteItems.length;renderPalette()}}
+  else if(e.key==="Enter"){e.preventDefault();if(paletteItems[paletteIndex])await runPaletteAction(paletteItems[paletteIndex].action)}
+};
+document.addEventListener("keydown",function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openPalette()}
+  else if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();openQuick()}
+  else if(e.key.toLowerCase()==="q"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)&&!document.querySelector("dialog[open]")){openQuick()}
+});
 
 var deferredInstall=null;
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;var b=$("installApp");if(b){b.disabled=false;b.textContent="Install Command Center"}});
@@ -522,8 +544,10 @@ $("installApp").onclick=async function(){if(deferredInstall){deferredInstall.pro
 
 loadFocus();
 var params=new URLSearchParams(location.search);if(params.get("view"))state.view=params.get("view");if(params.get("quick")==="1")setTimeout(function(){openQuick()},300);
-theme();installState();load().then(function(){
+theme();installState();load().then(async function(){
   if(state.focus.running){clearInterval(focusTimer);focusTimer=setInterval(tickFocus,1000)}
-  if(params.get("quick")!=="1")setTimeout(function(){openOnboarding(false)},250);
+  await ensureDailySnapshot();
+  if(params.get("share")==="1")setTimeout(function(){openShareCapture(params)},180);
+  else if(params.get("quick")!=="1")setTimeout(function(){openOnboarding(false)},250);
 }).catch(function(e){console.error(e);document.body.innerHTML="<main style='padding:40px;font-family:system-ui'><h1>Command Center could not start.</h1><p>Refresh the page. Your local data was not intentionally deleted.</p></main>"});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){});
