@@ -97,6 +97,8 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
+.planner-controls{width:100%;align-items:stretch;flex-direction:column}.planner-view-tabs{width:100%}.planner-week-grid{grid-template-columns:repeat(7,82vw);overflow:visible}.planner-day-grid{grid-template-columns:1fr}.planner-day-large{min-height:320px}.quick-reschedule{grid-column:1/-1}.quick-reschedule .buttons{display:grid;grid-template-columns:repeat(4,1fr)}
+
 .saved-view-bar{align-items:flex-start}.saved-views{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.saved-view-item{flex:0 0 auto}.weekday-picker{display:grid;grid-template-columns:repeat(4,1fr)}.weekday-picker label{justify-content:center;padding:9px 5px}.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{width:100%}
 
 .bulk-bar{grid-template-columns:1fr 1fr}.bulk-bar>b{grid-column:1/-1}.bulk-bar select,.bulk-bar input,.bulk-bar button{width:100%}.tasks-toolbar #tagFilter{width:100%}.dashboard-option{grid-template-columns:1fr auto}
@@ -170,3 +172,14 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 .weekday-picker{display:flex;flex-wrap:wrap;gap:7px}
 .weekday-picker label{display:flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card2);font-size:10px;font-weight:800}
 .weekday-picker input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+
+/* v7.2 planning power */
+.planner-toolbar{align-items:flex-start}.planner-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.planner-view-tabs{margin:0}
+.planner-week-grid{grid-template-columns:repeat(7,minmax(150px,1fr));gap:8px}.planner-day-grid{grid-template-columns:minmax(280px,1fr)}
+.planner-day-large{min-height:360px}.planner-day-large .cal-date small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+.planner-day-large .cal-tasks{display:grid;gap:7px;margin-top:10px}.planner-day-large .cal-task{white-space:normal;text-align:left}
+.planner-drop-hint{display:block;padding:18px 8px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:10px}
+.cal-day.planner-dragover{outline:3px solid color-mix(in srgb,var(--accent) 58%,transparent);outline-offset:-3px;background:var(--soft)}
+.planner-unscheduled-task{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);cursor:grab}.planner-unscheduled-task:active{cursor:grabbing}
+.kanban-card[draggable="true"]{cursor:grab}.kanban-card[draggable="true"]:active{cursor:grabbing}
+.quick-reschedule{display:grid;gap:6px;align-content:end}.quick-reschedule>small{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}.quick-reschedule .buttons{margin:0;gap:5px}.quick-reschedule button{padding:7px 8px;font-size:9px}
