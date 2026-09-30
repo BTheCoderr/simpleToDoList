@@ -5,7 +5,7 @@ const baseURL=externalBase||"http://127.0.0.1:4000";
 
 export default defineConfig({
   testDir:"./tests",
-  testMatch:/.*(?:e2e|production)\.spec\.mjs$/,
+  testMatch:externalBase?/.*production\.spec\.mjs$/:/.*e2e\.spec\.mjs$/,
   fullyParallel:false,
   workers:1,
   retries:process.env.CI?1:0,
