@@ -97,7 +97,7 @@ test("iPhone install guidance and share target capture are wired",async ({browse
   await page.goto("/?share=1&title=PWA%20Share&text=Captured%20locally&url=https%3A%2F%2Fexample.com");
   await expect(page.locator("#shareModal")).toHaveAttribute("open","");
   await expect(page.locator("#shareTitle")).toHaveValue("PWA Share");
-  await expect(page.locator("#shareBody")).toContainText("Captured locally");
-  await expect(page.locator("#shareBody")).toContainText("https://example.com");
+  await expect(page.locator("#shareBody")).toHaveValue(/Captured locally/);
+  await expect(page.locator("#shareBody")).toHaveValue(/https:\/\/example\.com/);
   await context.close();
 });
