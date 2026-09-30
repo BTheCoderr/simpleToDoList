@@ -18,6 +18,7 @@ import {
   MAX_IMPORT_BYTES,
   validateBackupPayload
 } from "../public/backup.js";
+import { tasksToCsv, workspaceToMarkdown } from "../public/exporters.js";
 
 const app=fs.readFileSync("public/app.js","utf8");
 const core=fs.readFileSync("public/core.js","utf8");
@@ -38,15 +39,17 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.2.1",()=>{
-  assert.equal(APP_VERSION,"7.2.1");
-  assert.equal(pkg.version,"7.2.1");
+test("release version is 7.3.0",()=>{
+  assert.equal(APP_VERSION,"7.3.0");
+  assert.equal(pkg.version,"7.3.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
-test("storage, core, and backup modules are imported",()=>{
+test("storage, core, backup, privacy, and exporter modules are imported",()=>{
   assert.match(app,/from "\.\/storage\.js"/);
   assert.match(app,/from "\.\/core\.js"/);
   assert.match(app,/from "\.\/backup\.js"/);
+  assert.match(app,/from "\.\/privacy\.js"/);
+  assert.match(app,/from "\.\/exporters\.js"/);
 });
 test("legacy dead helpers remain removed",()=>{
   assert.doesNotMatch(app,/function visibleTasks\b/);
@@ -64,7 +67,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v7.2.1/);
+  assert.match(workflow,/Wait for Netlify v7.3/);
   assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
@@ -82,9 +85,9 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v14 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v14/);
-  for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
+test("service worker cache is v15 and caches v7.3 modules",()=>{
+  assert.match(sw,/command-center-v15/);
+  for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
 });
@@ -119,7 +122,7 @@ test("no selector accidentally uses single-id helper",()=>{
   assert.deepEqual(bad,[]);
 });
 
-const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","settings"];
+const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","history","settings"];
 test("selector helper names stay valid",()=>assert.doesNotMatch(app,/\$\$\$\(/));
 
 test("all feature views remain available",()=>requiredViews.forEach(id=>assert.ok(ids.includes(id),id+" missing")));
@@ -136,11 +139,12 @@ test("task utilities link to templates and archive",()=>{
   assert.match(tasks,/data-view="templates"/);
   assert.match(tasks,/data-view="archive"/);
 });
-test("review family links daily weekly analytics",()=>{
+test("review family links daily weekly analytics and history",()=>{
   const reviewTabs=[...html.matchAll(/class="view-tabs"/g)].length;
-  assert.equal(reviewTabs,3);
+  assert.equal(reviewTabs,4);
   assert.match(html,/data-view="shutdown"/);
   assert.match(html,/data-view="analytics"/);
+  assert.match(html,/data-view="history"/);
 });
 
 test("v7 task power-user controls are present",()=>{
@@ -209,6 +213,41 @@ test("v7.2 Kanban order persists on task records without a schema bump",()=>{
   assert.match(app,/boardOrder=\(i\+1\)\*100/);
   assert.match(app,/boardOrder:old\?old\.boardOrder:null/);
   assert.equal(DB_VERSION,4);
+});
+
+test("v7.3 History is a real local audit view",()=>{
+  for(const id of ["history","historyFilter","historySearch","historyList"])assert.ok(ids.includes(id),id+" missing");
+  assert.match(app,/function renderHistory/);
+  assert.match(app,/function historyTypeLabel/);
+  assert.match(app,/task\.status/);
+  assert.match(app,/snapshot\.restored/);
+  assert.match(app,/backup\.imported/);
+});
+test("v7.3 human-readable exports are wired and pure helpers work",()=>{
+  for(const id of ["exportCsv","exportMarkdown"])assert.ok(ids.includes(id),id+" missing");
+  assert.match(app,/exportTasksCsv/);
+  assert.match(app,/exportWorkspaceMarkdown/);
+  const csv=tasksToCsv([{title:'Hello, "world"',status:"next",priority:"high",projectId:"p1",tags:["calls"],description:"Line\none"}],[{id:"p1",name:"Work"}]);
+  assert.match(csv,/"Hello, ""world"""/);
+  assert.match(csv,/Work/);
+  const md=workspaceToMarkdown({goals:[{id:"g1",name:"Ship",status:"active"}],projects:[{id:"p1",name:"Launch",goalId:"g1"}],tasks:[{title:"Finish QA",status:"next",projectId:"p1"}],notes:[],habits:[]});
+  assert.match(md,/## Goals/);
+  assert.match(md,/Finish QA/);
+});
+test("v7.3 local privacy lock is explicit about its limits and uses PBKDF2",()=>{
+  for(const id of ["privacyLockStatus","enablePrivacyLock","changePrivacyLock","disablePrivacyLock","lockNow","privacySetupModal","privacySetupForm","privacyLockScreen","privacyUnlockForm"])assert.ok(ids.includes(id),id+" missing");
+  const privacy=fs.readFileSync("public/privacy.js","utf8");
+  assert.match(privacy,/PBKDF2/);
+  assert.match(privacy,/SHA-256/);
+  assert.match(app,/cc-privacy-lock-v1/);
+  assert.match(html,/convenience lock, not encryption/);
+});
+test("v7.3 mobile task stages and project-to-task creation are wired",()=>{
+  assert.match(app,/data-swipe-status/);
+  assert.match(app,/data-status="next"/);
+  assert.match(app,/data-status="doing"/);
+  assert.match(app,/data-project-task/);
+  assert.match(app,/projectTask/);
 });
 
 test("database schema remains explicit v4",()=>assert.equal(DB_VERSION,4));

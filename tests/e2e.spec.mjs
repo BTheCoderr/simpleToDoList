@@ -368,13 +368,119 @@ test("Planner, Board, Focus, Goals, and Review remain connected",async ({page})=
   await expect(page.locator("#aRate")).toBeVisible();
 });
 
+test("History shows meaningful task audit events",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"History QA",status:"next"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"History QA"}).first();
+  await row.locator(".checkbtn").click();
+
+  await page.locator('[data-view="review"]').first().click();
+  await page.locator("#review").getByRole("button",{name:"History"}).click();
+  await expect(page.locator("#history")).toHaveClass(/active/);
+  await expect(page.locator("#historyList")).toContainText("History QA");
+  await expect(page.locator("#historyList")).toContainText("Task status");
+
+  await page.locator("#historySearch").fill("History QA");
+  await expect(page.locator("#historyList .history-row")).toHaveCount(2);
+});
+
+test("CSV and Markdown exports download human-readable files",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Export readable QA",tags:"#exports"});
+  await page.locator('[data-view="settings"]').first().click();
+
+  const [csv]=await Promise.all([
+    page.waitForEvent("download"),
+    page.locator("#exportCsv").click()
+  ]);
+  expect(csv.suggestedFilename()).toMatch(/^command-center-tasks-.*\.csv$/);
+
+  const [md]=await Promise.all([
+    page.waitForEvent("download"),
+    page.locator("#exportMarkdown").click()
+  ]);
+  expect(md.suggestedFilename()).toMatch(/^command-center-workspace-.*\.md$/);
+});
+
+test("local privacy lock gates a fresh tab and accepts only the correct code",async ({page,context})=>{
+  await page.goto("/?view=settings");
+  await assertAppBooted(page);
+  await page.locator("#enablePrivacyLock").click();
+  await page.locator("#privacyCode").fill("7391");
+  await page.locator("#privacyCodeConfirm").fill("7391");
+  await page.locator("#privacySetupForm .primary").click();
+  await expect(page.locator("#privacyLockStatus")).toContainText("ENABLED");
+
+  await page.locator("#lockNow").click();
+  await expect(page.locator("#privacyLockScreen")).not.toHaveClass(/hidden/);
+  await page.locator("#privacyUnlockCode").fill("0000");
+  await page.locator("#privacyUnlockForm .primary").click();
+  await expect(page.locator("#privacyUnlockError")).toHaveText("Incorrect code.");
+
+  await page.locator("#privacyUnlockCode").fill("7391");
+  await page.locator("#privacyUnlockForm .primary").click();
+  await expect(page.locator("#privacyLockScreen")).toHaveClass(/hidden/);
+
+  const second=await context.newPage();
+  await second.goto("/?view=today");
+  await assertAppBooted(second);
+  await expect(second.locator("#privacyLockScreen")).not.toHaveClass(/hidden/);
+  await second.locator("#privacyUnlockCode").fill("7391");
+  await second.locator("#privacyUnlockForm .primary").click();
+  await expect(second.locator("#privacyLockScreen")).toHaveClass(/hidden/);
+  await second.close();
+});
+
+test("mobile swipe status actions move tasks through Next and Doing",async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await openTasks(page);
+  await createTask(page,{title:"Mobile stage QA",status:"inbox"});
+  let row=page.locator("#taskList .task-row").filter({hasText:"Mobile stage QA"}).first();
+  await row.evaluate(el=>el.classList.add("reveal"));
+  await row.locator('[data-swipe-status][data-status="next"]').click();
+  await expect.poll(async ()=>((await getAll(page,"tasks")).find(x=>x.title==="Mobile stage QA")||{}).status).toBe("next");
+
+  row=page.locator("#taskList .task-row").filter({hasText:"Mobile stage QA"}).first();
+  await row.evaluate(el=>el.classList.add("reveal"));
+  await row.locator('[data-swipe-status][data-status="doing"]').click();
+  await expect.poll(async ()=>((await getAll(page,"tasks")).find(x=>x.title==="Mobile stage QA")||{}).status).toBe("doing");
+});
+
+test("Goal to Project to Task creation preserves the hierarchy",async ({page})=>{
+  await page.goto("/?view=goals");
+  await assertAppBooted(page);
+  await page.locator("#newGoal").click();
+  await page.locator("#goalName").fill("Hierarchy goal");
+  await page.locator("#goalForm .primary").click();
+
+  const goal=page.locator(".goal-card").filter({hasText:"Hierarchy goal"});
+  await goal.getByRole("button",{name:"Add project"}).click();
+  await page.locator("#simpleTitle").fill("Hierarchy project");
+  await page.locator("#simpleForm .primary").click();
+
+  await page.locator('[data-view="projects"]').first().click();
+  const project=page.locator("#projectGrid .card").filter({hasText:"Hierarchy project"}).first();
+  await project.locator("[data-project-task]").click();
+  await expect(page.locator("#taskProject")).toHaveValue(/.+/);
+  const projectId=await page.locator("#taskProject").inputValue();
+  await page.locator("#taskTitle").fill("Hierarchy task");
+  await page.getByRole("button",{name:"Save task"}).click();
+
+  await expect.poll(async ()=>{
+    const task=(await getAll(page,"tasks")).find(x=>x.title==="Hierarchy task");
+    return task&&task.projectId;
+  }).toBe(projectId);
+  const projects=await getAll(page,"projects");
+  expect(projects.find(x=>x.id===projectId)?.goalId).toBeTruthy();
+});
+
 test("snapshots restore a prior workspace state",async ({page})=>{
   await page.goto("/?view=settings");
   await assertAppBooted(page);
   await page.locator("#createSnapshot").click();
   await expect(page.locator("#snapshotList")).toContainText("Manual snapshot");
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await createTask(page,{title:"Temporary after snapshot"});
   await expect(page.locator("#taskList")).toContainText("Temporary after snapshot");
 
@@ -383,7 +489,7 @@ test("snapshots restore a prior workspace state",async ({page})=>{
   page.once("dialog",dialog=>dialog.accept());
   await manual.getByRole("button",{name:"Restore"}).click();
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await expect(page.locator("#taskList")).not.toContainText("Temporary after snapshot");
 });
 
@@ -430,13 +536,13 @@ test("installed shell reopens offline and local writes still work",async ({page,
   await page.reload({waitUntil:"domcontentloaded"});
   await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await createTask(page,{title:"Offline task"});
   await expect(page.locator("#taskList")).toContainText("Offline task");
 
   await context.setOffline(false);
   await page.reload();
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await expect(page.locator("#taskList")).toContainText("Offline task");
 });
 
