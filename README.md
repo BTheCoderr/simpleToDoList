@@ -42,6 +42,13 @@ Templates and Archive/Trash live under **Tasks**.
 
 Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
 
+### v7.2 planning workflows
+
+- **Planner Month / Week / Day** — switch calendar granularity without leaving Planner; the chosen mode persists locally.
+- **Drag-to-reschedule** — drag dated or unscheduled tasks onto a Planner day to change the due date.
+- **Quick reschedule** — one tap in the task editor for Today, Tomorrow, +1 week, or Clear date.
+- **Persistent Kanban order** — drag cards within or across Board columns and keep that order after reload.
+
 ### v7 power-user workflows
 
 - **Tags / contexts** — add reusable task tags such as `#calls`, `#errands`, or `#computer`. Quick Add still resolves a matching hashtag to a project, while extra/unmatched hashtags become task tags.
@@ -96,7 +103,7 @@ Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON i
 
 ## PWA
 
-- Offline cache: `command-center-v12`
+- Offline cache: `command-center-v13`
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG install icons
 - Dedicated 512×512 maskable icon

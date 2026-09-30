@@ -15,7 +15,8 @@ export function normalizeTask(task){
     createdAt:new Date().toISOString(),
     completedAt:null,
     archivedAt:null,
-    deletedAt:null
+    deletedAt:null,
+    boardOrder:null
   },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[],repeatWeekdays:Array.isArray(task.repeatWeekdays)?Array.from(new Set(task.repeatWeekdays.map(Number).filter(day=>day>=0&&day<=6))).sort((a,b)=>a-b):[]});
 }
 

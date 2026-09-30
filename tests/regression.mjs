@@ -38,9 +38,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.1.0",()=>{
-  assert.equal(APP_VERSION,"7.1.0");
-  assert.equal(pkg.version,"7.1.0");
+test("release version is 7.2.0",()=>{
+  assert.equal(APP_VERSION,"7.2.0");
+  assert.equal(pkg.version,"7.2.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, and backup modules are imported",()=>{
@@ -64,7 +64,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v7.1/);
+  assert.match(workflow,/Wait for Netlify v7.2/);
   assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
@@ -82,8 +82,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v12 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v12/);
+test("service worker cache is v13 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v13/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -183,6 +183,28 @@ test("v7.1 advanced recurrence controls exist without schema bump",()=>{
   assert.match(app,/data-repeat-weekday/);
 });
 
+test("v7.2 planner modes and quick reschedule controls are wired",()=>{
+  for(const id of ["plannerWeekdays","calendarGrid","calPrev","calToday","calNext","taskDue"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.equal((html.match(/data-planner-mode=/g)||[]).length,3);
+  assert.equal((html.match(/data-reschedule-preset=/g)||[]).length,4);
+  assert.match(app,/cc-planner-mode/);
+  assert.match(app,/function shiftPlanner/);
+  assert.match(app,/planner-week-grid/);
+  assert.match(app,/planner-day-grid/);
+  assert.match(app,/data-planner-date/);
+  assert.match(app,/function rescheduleTask/);
+});
+test("v7.2 Kanban order persists on task records without a schema bump",()=>{
+  assert.match(core,/boardOrder:null/);
+  assert.match(app,/function boardSort/);
+  assert.match(app,/function moveBoardTask/);
+  assert.match(app,/boardOrder=\(i\+1\)\*100/);
+  assert.match(app,/boardOrder:old\?old\.boardOrder:null/);
+  assert.equal(DB_VERSION,4);
+});
+
 test("database schema remains explicit v4",()=>assert.equal(DB_VERSION,4));
 test("migration from v2 creates v3/v4 stores",()=>{
   const existing=new Set(["tasks","projects","notes","habits","activity","templates"]);
@@ -219,14 +241,16 @@ test("backup validator rejects old, partial, malformed, and oversized data",()=>
   assert.equal(validateBackupPayload({version:6,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]},MAX_IMPORT_BYTES+1).ok,false);
 });
 
-test("normalizeTask repairs missing arrays and legacy tags",()=>{
+test("normalizeTask repairs missing arrays, tags, and board ordering",()=>{
   const task=normalizeTask({id:"x",title:"X",subtasks:null});
   assert.ok(Array.isArray(task.subtasks));
   assert.deepEqual(task.tags,[]);
   assert.deepEqual(task.repeatWeekdays,[]);
   assert.equal(task.repeat,"none");
-  const tagged=normalizeTask({id:"y",title:"Y",tags:["Calls","COMPUTER"]});
+  assert.equal(task.boardOrder,null);
+  const tagged=normalizeTask({id:"y",title:"Y",tags:["Calls","COMPUTER"],boardOrder:300});
   assert.deepEqual(tagged.tags,["calls","computer"]);
+  assert.equal(tagged.boardOrder,300);
 });
 function recurrence(repeat,dueDate,extra={}){
   return nextOccurrence({repeat,dueDate,repeatInterval:1,repeatUntil:"",...extra},new Date("2026-09-30T12:00:00"));

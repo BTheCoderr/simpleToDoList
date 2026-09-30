@@ -246,6 +246,87 @@ test("recurrence spawns the next dated task",async ({page})=>{
   }).toContain("2026-10-08");
 });
 
+test("Planner month week day modes persist and drag rescheduling updates dates",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Planner drag target"});
+  await page.locator('[data-view="planner"]').first().click();
+
+  await page.locator('[data-planner-mode="week"]').click();
+  await expect(page.locator("#calendarGrid")).toHaveClass(/planner-week-grid/);
+  await page.locator('[data-planner-mode="day"]').click();
+  await expect(page.locator("#calendarGrid")).toHaveClass(/planner-day-grid/);
+
+  await page.goto("/?view=planner");
+  await assertAppBooted(page);
+  await expect(page.locator('[data-planner-mode="day"]')).toHaveClass(/active/);
+
+  await page.locator('[data-planner-mode="month"]').click();
+  const targetDate=await page.evaluate(()=>{
+    const d=new Date();d.setDate(d.getDate()+1);
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  });
+  const source=page.locator('[data-planner-drag-task]').filter({hasText:"Planner drag target"}).first();
+  const target=page.locator('[data-planner-date="'+targetDate+'"]').first();
+  await source.dragTo(target);
+
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    return tasks.find(x=>x.title==="Planner drag target")?.dueDate;
+  }).toBe(targetDate);
+});
+
+test("quick reschedule presets update task due dates",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Quick reschedule QA"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Quick reschedule QA"}).first();
+  await row.locator("[data-edit-task]").first().click();
+
+  await page.locator('[data-reschedule-preset="tomorrow"]').click();
+  const tomorrow=await page.locator("#taskDue").inputValue();
+  expect(tomorrow).toMatch(/^20\d{2}-\d{2}-\d{2}$/);
+
+  await page.locator('[data-reschedule-preset="week"]').click();
+  const week=await page.locator("#taskDue").inputValue();
+  expect(week).not.toBe(tomorrow);
+
+  await page.getByRole("button",{name:"Save task"}).click();
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    return tasks.find(x=>x.title==="Quick reschedule QA")?.dueDate;
+  }).toBe(week);
+
+  await row.locator("[data-edit-task]").first().click();
+  await page.locator('[data-reschedule-preset="clear"]').click();
+  await expect(page.locator("#taskDue")).toHaveValue("");
+});
+
+test("Kanban drag order persists after reload",async ({page})=>{
+  await openTasks(page);
+  await createTask(page,{title:"Board order A",status:"next"});
+  await createTask(page,{title:"Board order B",status:"next"});
+  await createTask(page,{title:"Board order C",status:"next"});
+
+  await page.locator('[data-view="board"]').first().click();
+  const cardC=page.locator("#boardNext .kanban-card").filter({hasText:"Board order C"});
+  const cardA=page.locator("#boardNext .kanban-card").filter({hasText:"Board order A"});
+  await cardC.dragTo(cardA);
+
+  async function names(){
+    return page.locator("#boardNext .kanban-card>b").evaluateAll(nodes=>nodes.map(n=>n.textContent));
+  }
+  await expect.poll(async ()=>{
+    const list=await names();
+    return list.indexOf("Board order C")<list.indexOf("Board order A");
+  }).toBe(true);
+
+  await page.reload();
+  await assertAppBooted(page);
+  await expect.poll(async ()=>{
+    const list=await names();
+    return list.indexOf("Board order C")<list.indexOf("Board order A");
+  }).toBe(true);
+});
+
 test("Planner, Board, Focus, Goals, and Review remain connected",async ({page})=>{
   await openTasks(page);
   await createTask(page,{title:"Flow QA",dueDate:"2026-10-01",status:"next"});
