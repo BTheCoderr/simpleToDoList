@@ -10,7 +10,6 @@
     "standalone",
     "minimal-ui"
   ],
-  "orientation": "portrait-primary",
   "background_color": "#0b1020",
   "theme_color": "#0b1020",
   "categories": [
@@ -29,50 +28,22 @@
     {
       "name": "Today",
       "short_name": "Today",
-      "url": "/?view=today",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
+      "url": "/?view=today"
     },
     {
       "name": "Quick Add",
       "short_name": "Add",
-      "url": "/?quick=1",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
+      "url": "/?quick=1"
     },
     {
       "name": "Focus",
       "short_name": "Focus",
-      "url": "/?view=focus",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
+      "url": "/?view=focus"
     },
     {
-      "name": "Daily Shutdown",
-      "short_name": "Shutdown",
-      "url": "/?view=shutdown",
-      "icons": [
-        {
-          "src": "/icon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
+      "name": "Review",
+      "short_name": "Review",
+      "url": "/?view=review"
     }
   ],
   "share_target": {

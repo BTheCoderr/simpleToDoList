@@ -30,11 +30,7 @@
         <button class="nav" data-view="projects">▦ Projects</button>
         <button class="nav" data-view="notes">✎ Notes</button>
         <button class="nav" data-view="habits">↻ Habits</button>
-        <button class="nav" data-view="shutdown">☾ Daily Shutdown</button>
-        <button class="nav" data-view="review">◫ Weekly Review</button>
-        <button class="nav" data-view="templates">▤ Templates</button>
-        <button class="nav" data-view="archive">♲ Archive</button>
-        <button class="nav" data-view="analytics">↗ Analytics</button>
+        <button class="nav" data-view="review">◫ Review</button>
         <button id="sidebarPalette" class="nav" type="button">⌕ Command</button>
         <button class="nav" data-view="settings">⚙ Settings</button>
       </nav>
@@ -68,7 +64,7 @@
       </section>
 
       <section id="tasks" class="view">
-        <div class="toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button></div><button data-add="task" class="primary">＋ New task</button></div>
+        <div class="toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button></div><div class="buttons compact task-tools"><button data-view="templates">Templates</button><button data-view="archive">Archive</button><button data-add="task" class="primary">＋ New task</button></div></div>
         <div class="panel"><div id="taskList" class="stack"></div></div>
       </section>
 
@@ -129,6 +125,7 @@
       </section>
 
       <section id="shutdown" class="view">
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown" class="active">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button></div>
         <div class="shutdown-hero panel">
           <small class="caps">END THE DAY ON PURPOSE</small>
           <h2>Daily Shutdown</h2>
@@ -157,6 +154,7 @@
       </section>
 
       <section id="review" class="view">
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review" class="active">Weekly</button><button data-view="analytics">Analytics</button></div>
         <div class="review-hero panel">
           <small class="caps">WEEKLY RESET</small>
           <h2>Review the week. Choose the next one.</h2>
@@ -184,16 +182,17 @@
       </section>
 
       <section id="templates" class="view">
-        <div class="toolbar"><p>Reuse task setups instead of rebuilding the same checklist every time.</p><button id="newTemplate" class="primary">＋ New template</button></div>
+        <div class="toolbar"><div><button data-view="tasks" class="link">← Tasks</button><p>Reuse task setups instead of rebuilding the same checklist every time.</p></div><button id="newTemplate" class="primary">＋ New template</button></div>
         <div id="templateGrid" class="cards"></div>
       </section>
 
       <section id="archive" class="view">
-        <div class="toolbar"><div class="filters"><button class="active" data-archive-filter="archived">Archived</button><button data-archive-filter="trash">Trash</button></div><button id="archiveCompleted">Archive completed</button></div>
+        <div class="toolbar"><div><button data-view="tasks" class="link">← Tasks</button><div class="filters"><button class="active" data-archive-filter="archived">Archived</button><button data-archive-filter="trash">Trash</button></div></div><button id="archiveCompleted">Archive completed</button></div>
         <div class="panel"><div id="archiveList" class="stack"></div></div>
       </section>
 
       <section id="analytics" class="view">
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics" class="active">Analytics</button></div>
         <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Focus minutes</span><b id="aFocus">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
         <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
       </section>
@@ -339,6 +338,6 @@
   </dialog>
 
   <div id="toast" role="status" aria-live="polite" aria-atomic="true"><span id="toastText"></span><button id="toastAction" class="hidden" type="button"></button></div>
-  <script src="/app.js" defer></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

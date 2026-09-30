@@ -1,5 +1,29 @@
-var APP_VERSION="6.0.0",DB="command-center-v2",VER=4,SW_CACHE="command-center-v8",STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots","meta"],DATA_STORES=["tasks","projects","notes","habits","activity","templates","goals"],MAX_SNAPSHOT_BYTES=4*1024*1024,MAX_SNAPSHOTS=7;
-var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focusPreset:25,focus:null};
+import {
+  APP_VERSION,
+  DB_VERSION,
+  STORES,
+  DATA_STORES,
+  MAX_SNAPSHOT_BYTES,
+  MAX_SNAPSHOTS,
+  openDB,
+  all,
+  readStores,
+  save,
+  saveMany,
+  del,
+  clear
+} from "./storage.js";
+import {
+  normalizeTask,
+  dateKey,
+  today,
+  nextOccurrence,
+  parseQuick as parseQuickCore,
+  goalProgress as goalProgressCore
+} from "./core.js";
+
+const SW_CACHE="command-center-v9";
+var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -11,34 +35,11 @@ var builtInTemplates=[
   {id:"builtin-errands",name:"Errands Run",title:"Run errands",description:"Quick reusable errands checklist.",priority:"medium",projectId:"",subtasks:["Make list","Plan route","Complete stops","Put receipts away"]}
 ];
 
-var MIGRATIONS={
-  1:["tasks","projects","notes","habits","activity"],
-  2:["templates"],
-  3:["goals","snapshots"],
-  4:["meta"]
-};
-function ensureStore(db,name){if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath:"id"})}
-function runMigrations(db,tx,oldVersion,newVersion){
-  for(var v=oldVersion+1;v<=newVersion;v++)(MIGRATIONS[v]||[]).forEach(function(name){ensureStore(db,name)});
-  if(db.objectStoreNames.contains("meta"))tx.objectStore("meta").put({id:"schema",version:newVersion,appVersion:APP_VERSION,upgradedAt:new Date().toISOString()});
-}
-
 function uid(p){return p+"-"+Date.now()+"-"+Math.random().toString(36).slice(2,7)}
-function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB,VER);r.onupgradeneeded=function(e){runMigrations(r.result,r.transaction,e.oldVersion,e.newVersion||VER)};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)};r.onblocked=function(){rej(new Error("Database upgrade blocked by another open Command Center tab"))}})}
-function all(store){return openDB().then(function(db){return new Promise(function(res,rej){var r=db.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=function(){db.close();res(r.result)};r.onerror=function(){db.close();rej(r.error)}})})}
-function readStores(names){return openDB().then(function(db){return new Promise(function(res,rej){var out={},tx=db.transaction(names,"readonly");names.forEach(function(name){var r=tx.objectStore(name).getAll();r.onsuccess=function(){out[name]=r.result||[]}});tx.oncomplete=function(){db.close();res(out)};tx.onerror=function(){var e=tx.error;db.close();rej(e)};tx.onabort=function(){var e=tx.error||new Error("Read transaction aborted");db.close();rej(e)}})})}
-function save(store,val){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).put(val);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
-function saveMany(store,values){if(!values||!values.length)return Promise.resolve();return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite"),os=tx.objectStore(store);values.forEach(function(v){os.put(v)});tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
-function del(store,id){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).delete(id);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
-function clear(store){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).clear();tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
 async function seed(){var data=await readStores(["tasks","projects","notes","habits"]),count=data.tasks.length+data.projects.length+data.notes.length+data.habits.length;if(count)return;for(var k of ["projects","tasks","notes","habits"])await saveMany(k,defaults[k])}
 async function load(){await seed();var data=await readStores(STORES);state.tasks=(data.tasks||[]).map(normalizeTask);state._active=state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt});state.projects=(data.projects||[]).map(function(p){return Object.assign({goalId:""},p)});state.notes=data.notes||[];state.habits=data.habits||[];state.activity=data.activity||[];state.templates=data.templates||[];state.goals=data.goals||[];state.snapshots=data.snapshots||[];render()}
-function normalizeTask(t){return Object.assign({description:"",status:"inbox",priority:"medium",projectId:"",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null},t,{subtasks:Array.isArray(t.subtasks)?t.subtasks:[]})}
 function activeTasks(){return state._active||[]}
-function visibleTasks(){return activeTasks()}
 function esc(v){return String(v||"").replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]})}
-function today(){var d=new Date();return dateKey(d)}
-function dateKey(d){var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day}
 function pname(id){var p=state.projects.find(function(x){return x.id===id});return p?p.name:""}
 function gname(id){var g=state.goals.find(function(x){return x.id===id});return g?g.name:""}
 function overdue(t){return t.dueDate&&t.status!=="done"&&t.dueDate<today()}
@@ -49,10 +50,11 @@ function subtaskStats(t){var a=t.subtasks||[],done=a.filter(function(x){return x
 function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
-  $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===state.view;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  var navView=["templates","archive"].includes(state.view)?"tasks":["shutdown","analytics"].includes(state.view)?"review":state.view;
+  $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===navView;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
-  if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Shutdown",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
+  if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
   $("sidebar").classList.remove("open");if(state.view==="settings")setTimeout(refreshSystemInfo,0);
 }
@@ -108,30 +110,7 @@ function renderAnalytics(){
   bars("statusBars",[["inbox",base.filter(function(t){return t.status==="inbox"}).length],["next",base.filter(function(t){return t.status==="next"}).length],["doing",base.filter(function(t){return t.status==="doing"}).length],["done",done]],total);
 }
 
-function parseDatePhrase(text){
-  var lower=text.toLowerCase(),d=new Date(),found="";
-  if(/\btoday\b/.test(lower)){found="today"}else if(/\btomorrow\b/.test(lower)){d.setDate(d.getDate()+1);found="tomorrow"}else if(/\bnext week\b/.test(lower)){d.setDate(d.getDate()+7);found="next week"}else{
-    var days=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"],hit=days.find(function(x){return new RegExp("\\b(next\\s+)?"+x+"\\b","i").test(text)});
-    if(hit){var target=days.indexOf(hit),delta=(target-d.getDay()+7)%7;if(delta===0)delta=7;if(new RegExp("\\bnext\\s+"+hit+"\\b","i").test(text)&&delta<7)delta+=7;d.setDate(d.getDate()+delta);found=(new RegExp("\\bnext\\s+"+hit+"\\b","i").test(text)?"next ":"")+hit}
-  }
-  var iso=text.match(/\b(20\d{2}-\d{2}-\d{2})\b/);if(iso){return {date:iso[1],phrase:iso[1]}}
-  return found?{date:dateKey(d),phrase:found}:{date:"",phrase:""};
-}
-function parseQuick(text){
-  var raw=text.trim(),work=raw,priority="medium",repeat="none",projectId="",dueTime="";
-  var pm=work.match(/!(high|medium|low)\b/i);if(pm){priority=pm[1].toLowerCase();work=work.replace(pm[0]," ")}
-  var everyDays=work.match(/\bevery\s+(\d+)\s+days?\b/i),repeatInterval=1;
-  if(everyDays){repeat="custom_days";repeatInterval=Math.max(1,Number(everyDays[1])||1);work=work.replace(everyDays[0]," ")}
-  else if(/\b(daily|every day)\b/i.test(work)){repeat="daily";work=work.replace(/\b(daily|every day)\b/i," ")}
-  else if(/\b(weekdays|every weekday)\b/i.test(work)){repeat="weekdays";work=work.replace(/\b(weekdays|every weekday)\b/i," ")}
-  else if(/\b(weekly|every week)\b/i.test(work)){repeat="weekly";work=work.replace(/\b(weekly|every week)\b/i," ")}
-  else if(/\b(monthly|every month)\b/i.test(work)){repeat="monthly";work=work.replace(/\b(monthly|every month)\b/i," ")}
-  var tm=work.match(/\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i);if(tm){var h=parseInt(tm[1],10),min=tm[2]||"00",ap=tm[3].toLowerCase();if(ap==="pm"&&h<12)h+=12;if(ap==="am"&&h===12)h=0;dueTime=String(h).padStart(2,"0")+":"+min;work=work.replace(tm[0]," ")}
-  var dp=parseDatePhrase(work);if(dp.phrase)work=work.replace(new RegExp("\\b"+dp.phrase.replace(" ","\\s+")+"\\b","i")," ");
-  var tags=work.match(/#[a-z0-9_-]+/ig)||[];if(tags.length){var tag=tags[0].slice(1).toLowerCase().replace(/[-_]/g,"");var p=state.projects.find(function(x){var n=(x.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),a=(x.area||"").toLowerCase().replace(/[^a-z0-9]/g,"");return n===tag||n.startsWith(tag)||a===tag});if(p)projectId=p.id;work=work.replace(tags[0]," ")}
-  work=work.replace(/\s+/g," ").trim();
-  return {title:work||raw,description:"",status:"inbox",priority:priority,projectId:projectId,dueDate:dp.date,dueTime:dueTime,repeat:repeat,repeatInterval:typeof repeatInterval==="number"?repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null};
-}
+function parseQuick(text){return parseQuickCore(text,state.projects)}
 function quickPreview(){
   var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+(q.repeat!=="none"?'<span class="pill">↻ '+q.repeat+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
 }
@@ -139,22 +118,6 @@ function openQuick(seed){$("quickForm").reset();$("quickInput").value=seed||"";q
 async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id=uid("t");await save("tasks",q);await log("task.created",q.title,{source:"quick-add"});await load();toast("Captured"+(q.dueDate?" for "+fmt(q.dueDate,q.dueTime):" to Inbox"))}
 
 
-function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
-function addMonthsClamped(d,n){var x=new Date(d),day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+n);var last=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(day,last));return x}
-function nextWeekday(d){var x=addDays(d,1);while(x.getDay()===0||x.getDay()===6)x=addDays(x,1);return x}
-function nextOccurrence(t){
-  if(!t.repeat||t.repeat==="none")return "";
-  var base=t.repeat==="after_completion"?new Date():new Date((t.dueDate||today())+"T12:00:00");
-  var n=Math.max(1,Number(t.repeatInterval)||1),next;
-  if(t.repeat==="daily")next=addDays(base,1);
-  else if(t.repeat==="weekdays")next=nextWeekday(base);
-  else if(t.repeat==="weekly")next=addDays(base,7);
-  else if(t.repeat==="monthly")next=addMonthsClamped(base,1)
-  else if(t.repeat==="custom_days"||t.repeat==="after_completion")next=addDays(base,n);
-  else return "";
-  var key=dateKey(next);
-  return t.repeatUntil&&key>t.repeatUntil?"":key;
-}
 async function spawnNextOccurrence(t){
   var due=nextOccurrence(t);if(!due)return;
   var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
@@ -196,7 +159,6 @@ function loadFocus(){
   try{state.focus=JSON.parse(localStorage.getItem("cc-focus")||"null")}catch(e){state.focus=null}
   if(!state.focus)state.focus={taskId:"",minutes:25,remaining:25*60,running:false,endAt:null};
   if(state.focus.running&&state.focus.endAt){state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000))}
-  state.focusPreset=state.focus.minutes||25;
 }
 function persistFocus(){localStorage.setItem("cc-focus",JSON.stringify(state.focus))}
 function focusDisplay(seconds){seconds=Math.max(0,Math.floor(seconds));return String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0")}
@@ -237,10 +199,7 @@ function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-c
 
 
 
-function goalProgress(g){
-  var projects=state.projects.filter(function(p){return p.goalId===g.id}),ids=new Set(projects.map(function(p){return p.id})),tasks=activeTasks().filter(function(t){return ids.has(t.projectId)}),done=tasks.filter(function(t){return t.status==="done"}).length;
-  return {projects:projects.length,tasks:tasks.length,done:done,percent:tasks.length?Math.round(done/tasks.length*100):(g.status==="done"?100:0)};
-}
+function goalProgress(g){return goalProgressCore(g,state.projects,activeTasks())}
 function renderGoals(){
   $("goalGrid").innerHTML=state.goals.slice().sort(function(a,b){return (a.status==="done")-(b.status==="done")}).map(function(g){var p=goalProgress(g);return '<article class="card goal-card"><small class="caps">'+esc(g.status||"active")+'</small><h3>'+esc(g.name)+'</h3><p>'+esc(g.why||"No description yet.")+'</p>'+(g.targetDate?'<span class="goal-target">Target · '+fmt(g.targetDate)+'</span>':'')+'<div class="progress"><i style="width:'+p.percent+'%"></i></div><small>'+p.done+'/'+p.tasks+' tasks · '+p.projects+' projects · '+p.percent+'%</small><footer><div class="row"><button data-goal-project="'+g.id+'" class="link">Add project</button><button data-edit-goal="'+g.id+'">Edit</button></div></footer></article>'}).join("")||'<div class="empty">Create a goal, then connect projects to it.</div>';
 }
@@ -417,7 +376,7 @@ async function refreshSystemInfo(){
     var usage=estimate.usage!=null?formatBytes(estimate.usage):"Unavailable",quota=estimate.quota!=null?formatBytes(estimate.quota):"Unavailable";
     var rows=[
       ["App version","v"+APP_VERSION],
-      ["Database schema","v"+(meta.version||VER)],
+      ["Database schema","v"+(meta.version||DB_VERSION)],
       ["Offline cache",SW_CACHE],
       ["Service worker",reg&&reg.active?"Active":"Not active yet"],
       ["Open tasks",String(activeTasks().filter(function(t){return t.status!=="done"}).length)],
