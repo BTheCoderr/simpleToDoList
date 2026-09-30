@@ -249,7 +249,7 @@ test("recurrence spawns the next dated task",async ({page})=>{
 test("Planner month week day modes persist and drag rescheduling updates dates",async ({page})=>{
   await openTasks(page);
   await createTask(page,{title:"Planner drag target"});
-  await page.getByRole("button",{name:"Planner"}).click();
+  await page.locator('[data-view="planner"]').first().click();
 
   await page.locator('[data-planner-mode="week"]').click();
   await expect(page.locator("#calendarGrid")).toHaveClass(/planner-week-grid/);
@@ -302,7 +302,7 @@ test("Kanban drag order persists after reload",async ({page})=>{
   await createTask(page,{title:"Board order B",status:"next"});
   await createTask(page,{title:"Board order C",status:"next"});
 
-  await page.getByRole("button",{name:"Board"}).click();
+  await page.locator('[data-view="board"]').first().click();
   const cardC=page.locator("#boardNext .kanban-card").filter({hasText:"Board order C"});
   const cardA=page.locator("#boardNext .kanban-card").filter({hasText:"Board order A"});
   await cardC.dragTo(cardA);
