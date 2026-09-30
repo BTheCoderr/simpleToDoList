@@ -211,16 +211,16 @@ async function applyBulkChanges(){
     if(status)await setTaskStatus(t,status);else pending.push(t);
   }
   if(pending.length)await saveMany("tasks",pending);
-  await log("task.bulk-updated",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks updated")
+  await log("task.bulk-updated",items.length+" tasks",{count:items.length,taskIds:items.map(function(t){return t.id})});state.selectedTaskIds.clear();await load();toast(items.length+" tasks updated")
 }
 async function bulkArchive(){
   var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
-  var stamp=new Date().toISOString();items.forEach(function(t){t.archivedAt=stamp});await saveMany("tasks",items);await log("task.bulk-archived",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks archived")
+  var stamp=new Date().toISOString();items.forEach(function(t){t.archivedAt=stamp});await saveMany("tasks",items);await log("task.bulk-archived",items.length+" tasks",{count:items.length,taskIds:items.map(function(t){return t.id})});state.selectedTaskIds.clear();await load();toast(items.length+" tasks archived")
 }
 async function bulkTrash(){
   var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
   if(!confirm("Move "+items.length+" selected tasks to Trash?"))return;
-  var stamp=new Date().toISOString();items.forEach(function(t){t.deletedAt=stamp});await saveMany("tasks",items);await log("task.bulk-trashed",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks moved to Trash")
+  var stamp=new Date().toISOString();items.forEach(function(t){t.deletedAt=stamp});await saveMany("tasks",items);await log("task.bulk-trashed",items.length+" tasks",{count:items.length,taskIds:items.map(function(t){return t.id})});state.selectedTaskIds.clear();await load();toast(items.length+" tasks moved to Trash")
 }
 function clearBulkSelection(){state.selectedTaskIds.clear();renderTasks()}
 function toggleBulkMode(){state.bulkMode=!state.bulkMode;if(!state.bulkMode)state.selectedTaskIds.clear();renderTasks()}
@@ -322,10 +322,10 @@ async function moveBoardTask(id,status,beforeId){
   if(at<0)target.push(task);else target.splice(at,0,task);
   target.forEach(function(t,i){t.boardOrder=(i+1)*100});await saveMany("tasks",target);
   if(oldStatus!==status){var old=activeTasks().filter(function(t){return t.status===oldStatus&&t.id!==id}).sort(boardSort);old.forEach(function(t,i){t.boardOrder=(i+1)*100});await saveMany("tasks",old)}
-  await load();toast("Board order saved")
+  await log("task.board",task.title,{taskId:task.id,status:status,beforeId:beforeId||""});await load();toast("Board order saved")
 }
 async function rescheduleTask(id,date){
-  var task=state.tasks.find(function(t){return t.id===id});if(!task)return;task.dueDate=date||"";await save("tasks",task);await log("task.rescheduled",task.title,{dueDate:task.dueDate});await load();toast(date?"Rescheduled for "+fmt(date):"Date cleared")
+  var task=state.tasks.find(function(t){return t.id===id});if(!task)return;task.dueDate=date||"";await save("tasks",task);await log("task.rescheduled",task.title,{taskId:task.id,dueDate:task.dueDate});await load();toast(date?"Rescheduled for "+fmt(date):"Date cleared")
 }
 function bars(id,arr,total){$(id).innerHTML=arr.map(function(x){var pc=total?Math.round(x[1]/total*100):0;return'<div class="bar"><div class="barhead"><span>'+x[0]+'</span><b>'+x[1]+'</b></div><div class="progress"><i style="width:'+pc+'%"></i></div></div>'}).join("")}
 function renderAnalytics(){
@@ -389,16 +389,17 @@ function quickPreview(){
   var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+tagPills(q)+(q.repeat!=="none"?'<span class="pill">↻ '+esc(repeatLabel(q))+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
 }
 function openQuick(seed){$("quickForm").reset();$("quickInput").value=seed||"";quickPreview();openDialog($("quickModal"));setTimeout(function(){$("quickInput").focus()},30)}
-async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id=uid("t");await save("tasks",q);await log("task.created",q.title,{source:"quick-add"});await load();toast("Captured"+(q.dueDate?" for "+fmt(q.dueDate,q.dueTime):" to Inbox"))}
+async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id=uid("t");await save("tasks",q);await log("task.created",q.title,{source:"quick-add",taskId:q.id,status:q.status,dueDate:q.dueDate});await load();toast("Captured"+(q.dueDate?" for "+fmt(q.dueDate,q.dueTime):" to Inbox"))}
 
 
 async function spawnNextOccurrence(t){
   var due=nextOccurrence(t);if(!due)return;
   var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,boardOrder:null,subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
-  await save("tasks",copy);await log("task.recurred",t.title,{nextDue:due});
+  await save("tasks",copy);await log("task.recurred",t.title,{taskId:t.id,spawnedTaskId:copy.id,nextDue:due});
 }
 async function setTaskStatus(t,status){
   var was=t.status;t.status=status;t.completedAt=status==="done"?(t.completedAt||new Date().toISOString()):null;await save("tasks",t);
+  if(was!==status)await log("task.status",t.title,{taskId:t.id,fromStatus:was,status:status});
   if(was!=="done"&&status==="done")await spawnNextOccurrence(t);
 }
 
@@ -420,7 +421,7 @@ async function saveTask(e){
   var repeat=$("taskRepeat").value,repeatWeekdays=repeat==="selected_weekdays"?$$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)}):[];
   if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
   var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null,boardOrder:old?old.boardOrder:null};
-  if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
+  if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title,{taskId:t.id,status:t.status,priority:t.priority,dueDate:t.dueDate});$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
   var t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,t.status==="done"?"next":"done");await load()
@@ -457,7 +458,7 @@ function renderFocus(){
 }
 async function finishFocus(){
   var task=state.tasks.find(function(t){return t.id===state.focus.taskId}),minutes=state.focus.minutes;
-  if(task)await log("focus.completed",task.title,{minutes:minutes});
+  if(task)await log("focus.completed",task.title,{taskId:task.id,minutes:minutes});
   state.focus={taskId:state.focus.taskId,minutes:minutes,remaining:minutes*60,running:false,endAt:null};persistFocus();clearInterval(focusTimer);focusTimer=null;await load();toast("Focus session complete")
 }
 function tickFocus(){
@@ -666,7 +667,7 @@ async function saveTemplateForm(e){
 async function useTemplate(id,builtin){
   var source=builtin?builtInTemplates.find(function(t){return t.id===id}):state.templates.find(function(t){return t.id===id});if(!source)return;
   var task={id:uid("t"),title:source.title,description:source.description||"",status:"inbox",priority:source.priority||"medium",projectId:source.projectId||"",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:(source.subtasks||[]).map(function(s){return{id:uid("s"),title:typeof s==="string"?s:s.title,done:false}}),createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null};
-  await save("tasks",task);await log("template.used",source.name);await load();state.view="tasks";nav();toast("Template created a task");
+  await save("tasks",task);await log("template.used",source.name,{taskId:task.id});await load();state.view="tasks";nav();toast("Template created a task");
 }
 async function saveCurrentAsTemplate(){
   var title=$("taskTitle").value.trim();if(!title){toast("Give the task a title first");return}
@@ -679,14 +680,14 @@ function renderArchive(){
   $("archiveList").innerHTML=items.length?items.map(function(t){return archiveRow(t,trash)}).join(""):'<div class="empty">'+(trash?"Trash is empty.":"No archived tasks yet.")+'</div>';
 }
 async function trashTask(id){
-  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=new Date().toISOString();await save("tasks",t);await log("task.trashed",t.title);await load();
+  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=new Date().toISOString();await save("tasks",t);await log("task.trashed",t.title,{taskId:t.id});await load();
   toast("Moved to Trash","Undo",async function(){t.deletedAt=null;await save("tasks",t);await load();toast("Restored")});
 }
 async function archiveTaskById(id){
-  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.archivedAt=new Date().toISOString();await save("tasks",t);await log("task.archived",t.title);await load();toast("Archived","Undo",async function(){t.archivedAt=null;await save("tasks",t);await load();toast("Restored")});
+  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.archivedAt=new Date().toISOString();await save("tasks",t);await log("task.archived",t.title,{taskId:t.id});await load();toast("Archived","Undo",async function(){t.archivedAt=null;await save("tasks",t);await log("task.restored",t.title,{taskId:t.id});await load();toast("Restored")});
 }
-async function restoreTask(id){var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=null;t.archivedAt=null;await save("tasks",t);await load();toast("Task restored")}
-async function archiveCompleted(){var items=activeTasks().filter(function(t){return t.status==="done"});for(var t of items){t.archivedAt=new Date().toISOString();await save("tasks",t)}await load();toast(items.length?items.length+" completed tasks archived":"Nothing to archive")}
+async function restoreTask(id){var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=null;t.archivedAt=null;await save("tasks",t);await log("task.restored",t.title,{taskId:t.id});await load();toast("Task restored")}
+async function archiveCompleted(){var items=activeTasks().filter(function(t){return t.status==="done"}),stamp=new Date().toISOString();items.forEach(function(t){t.archivedAt=stamp});await saveMany("tasks",items);if(items.length)await log("task.bulk-archived",items.length+" completed tasks",{count:items.length,taskIds:items.map(function(t){return t.id})});await load();toast(items.length?items.length+" completed tasks archived":"Nothing to archive")}
 
 
 async function refreshSystemInfo(){
