@@ -1,12 +1,13 @@
 {
-  "release": "mobile-onboarding-qa",
-  "version": "3.1.0",
-  "commit": "4e9276975555f338fde69b3d699fd8dbad7e2ea5",
+  "release": "weekly-system-v4",
+  "version": "4.0.0",
+  "commit": "50522d2ff4705fc78d2c6b483f702a4e3b9d9450",
   "features": [
-    "onboarding",
-    "swipe-actions",
-    "mobile-bottom-sheets",
-    "diagnostics",
-    "touch-polish"
+    "weekly-review",
+    "templates",
+    "archive",
+    "trash",
+    "undo",
+    "advanced-recurrence"
   ]
 }
