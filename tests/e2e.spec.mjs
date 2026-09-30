@@ -1,14 +1,25 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({page})=>{
+  page.on("console",msg=>{if(msg.type()==="error")console.log("[browser error]",msg.text())});
+  page.on("pageerror",error=>console.log("[pageerror]",error.stack||error.message));
   await page.addInitScript(()=>{
     localStorage.setItem("cc-onboarded-v1","1");
     localStorage.setItem("cc-theme","dark");
   });
 });
 
+async function assertAppBooted(page){
+  await page.waitForLoadState("domcontentloaded");
+  if(await page.getByText("Command Center could not start.").count()){
+    const body=await page.locator("body").innerText();
+    throw new Error("Command Center startup failed. Body: "+body.slice(0,1000));
+  }
+}
+
 async function openTasks(page){
   await page.goto("/?view=tasks");
+  await assertAppBooted(page);
   await expect(page.locator("#tasks")).toHaveClass(/active/);
 }
 
@@ -159,6 +170,7 @@ test("Planner, Board, Focus, Goals, and Review remain connected",async ({page})=
 
 test("snapshots restore a prior workspace state",async ({page})=>{
   await page.goto("/?view=settings");
+  await assertAppBooted(page);
   await page.locator("#createSnapshot").click();
   await expect(page.locator("#snapshotList")).toContainText("Manual snapshot");
 
@@ -209,6 +221,7 @@ test("export works and malformed, old, partial, and oversized imports fail safel
 
 test("installed shell reopens offline and local writes still work",async ({page,context})=>{
   await page.goto("/");
+  await assertAppBooted(page);
   await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>true));
   await page.reload();
   await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
@@ -229,6 +242,7 @@ test("installed shell reopens offline and local writes still work",async ({page,
 
 test("500, 1000, and 5000 task workspaces remain responsive",async ({page})=>{
   await page.goto("/");
+  await assertAppBooted(page);
   for(const count of [500,1000,5000]){
     await replaceTasks(page,count);
     const started=Date.now();
@@ -244,6 +258,7 @@ test("500, 1000, and 5000 task workspaces remain responsive",async ({page})=>{
 
 test("modal focus is trapped/restored and mobile large text avoids page overflow",async ({page})=>{
   await page.goto("/");
+  await assertAppBooted(page);
   const trigger=page.locator("#addTask");
   await trigger.focus();
   await trigger.click();
