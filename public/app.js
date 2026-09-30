@@ -328,7 +328,7 @@ function openTask(t,prefillDate){
 }
 async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
-  var repeat=$("taskRepeat").value,repeatWeekdays=$$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)});
+  var repeat=$("taskRepeat").value,repeatWeekdays=repeat==="selected_weekdays"?$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)}):[];
   if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
   var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null};
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
