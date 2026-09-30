@@ -1,122 +1,125 @@
 # Command Center
 
-<!-- repo-intro:start -->
-**Project snapshot:** Command Center is a private, local-first productivity PWA that grew from a simple to-do app into a personal operating system with planning, focus, goals, habits, review workflows, recovery tools, privacy controls, and browser QA.
+<p align="center">
+  <img src="public/icon-512.png" alt="Command Center app icon" width="150" />
+</p>
 
-**What it demonstrates:** JavaScript · IndexedDB · PWA/offline · Playwright · local-first product architecture · progressive enhancement.
+<p align="center"><strong>A private, local-first productivity PWA built to plan, focus, review, and keep moving without an account or cloud database.</strong></p>
+
+[![CI](https://github.com/BTheCoderr/simpleToDoList/actions/workflows/ci.yml/badge.svg)](https://github.com/BTheCoderr/simpleToDoList/actions/workflows/ci.yml)
+![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-Browser--native-F7DF1E?logo=javascript&logoColor=000)
+![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB-2563EB)
+![Playwright](https://img.shields.io/badge/QA-Playwright-2EAD33?logo=playwright&logoColor=white)
+
+**Live app:** https://command-center-local.netlify.app
+
+<!-- repo-intro:start -->
+**Project snapshot:** Command Center is a private, local-first personal productivity system that evolved from a simple to-do list into an installable PWA with planning, focus, goals, habits, review workflows, recovery tools, privacy controls, exports, and browser QA.
+
+**Current product:** v7.3 · browser-native JavaScript · IndexedDB schema v4 · installable/offline PWA · no account service · no cloud database.
+
+**What it demonstrates:** JavaScript · IndexedDB · PWA/offline architecture · Playwright E2E · local-first product design · progressive enhancement · release hardening.
 <!-- repo-intro:end -->
 
 <!-- portfolio-refresh:start -->
-## Portfolio snapshot
+## Product experience
 
-| Area | Current implementation |
-| --- | --- |
-| Product | Private local-first personal operating system |
-| Storage | IndexedDB schema v4 + localStorage/sessionStorage preferences |
-| Offline | Installable PWA with controlled service-worker updates |
-| Recovery | Rotating snapshots, validated JSON restore, Archive/Trash/Undo |
-| Privacy | Optional PBKDF2-based local convenience lock |
-| QA | Regression suite + Chromium Playwright E2E including mobile/offline/stress coverage |
+Command Center is built around a simple loop: **capture → plan → focus → review**.
 
-**Production URL:** https://command-center-local.netlify.app  
-The repository is ahead of production while deployment is intentionally paused; `master` remains the source of truth for v7.3.
+### Capture + organize
 
-The engineering story here is the evolution from a small to-do list into a dependency-light, local-only productivity system without introducing an account service or cloud database just to add complexity.
-<!-- portfolio-refresh:end -->
-
-Command Center keeps user data on the device in IndexedDB. There is no account system or cloud database.
-
-## Current code release: v7.3 Local-Only Polish
-
-v7.3 finishes the local-only product layer without changing IndexedDB schema v4.
-
-### v7.3 highlights
-
-- **Activity History** — a searchable/filterable local audit trail for meaningful task, project, goal, review, backup, privacy, and export events.
-- **Human-readable exports** — full JSON recovery backup plus Tasks CSV and Workspace Markdown.
-- **Optional Privacy Lock** — a local convenience lock using PBKDF2 + SHA-256 with a random salt. It hides the UI on a fresh session but does **not** encrypt IndexedDB.
-- **Mobile task stages** — the existing swipe action row now supports fast moves to Next and Doing in addition to Edit, Done, and Delete.
-- **Goal → Project → Task flow** — create projects directly from goals and tasks directly from project cards.
-- **PWA release polish / offline cache v16** — validated 192px, 512px, maskable, and Apple touch icons; hardened same-origin offline fallback; added install guidance, theme-aware app chrome, deep-link offline QA, and share-target coverage.
-
-Production deployment is intentionally deferred while Netlify build credits are unavailable. GitHub remains the source of truth and every change is tested before merge.
-
-## Product structure
-
-Top-level navigation stays intentionally small:
-
-- Today
-- Tasks
-- Planner
-- Board
-- Focus
-- Goals
-- Projects
-- Notes
-- Habits
-- Review
-- Command
-- Settings
-
-Templates and Archive/Trash live under **Tasks**.
-
-Daily Shutdown, Weekly Review, Analytics, and Activity History live under **Review**.
-
-### Planning and execution
-
-- Tasks with Inbox / Next / Doing / Done states
-- Smart Quick Add
-- Tags / contexts
-- Saved Task Views
+- Inbox / Next / Doing / Done task workflow
+- Smart Quick Add with dates, priorities, projects, tags, and recurring rules
+- Saved Task Views and filters
 - Multi-select bulk actions
+- Projects, Goals, Notes, and Habits
+- Subtasks and recurring tasks
+
+### Plan + execute
+
 - Month / Week / Day Planner
 - Drag-to-reschedule
-- Quick reschedule presets
+- Quick Today / Tomorrow / +1 week actions
 - Persistent Kanban ordering
-- Focus Mode
-- Subtasks
-- Daily, weekday, weekly, monthly, every-X-days, every-X-weeks, selected-weekday, and after-completion recurrence
-
-### Outcomes and reflection
-
-- Goals → Projects → Tasks hierarchy
-- Notes
-- Habits
+- Focus Mode with selectable work sessions
+- Goal → Project → Task hierarchy
 - Customizable Today dashboard
+
+### Review + recover
+
 - Daily Shutdown
 - Weekly Review
 - Analytics
-- Activity History
-
-### Recovery and privacy
-
-- Rotating local snapshots
-- Full JSON backup/import with validation
+- searchable Activity History
+- Archive / Trash / Undo
+- rotating local snapshots
+- validated JSON backup/import
 - Tasks CSV export
 - Workspace Markdown export
-- Archive / Trash / Undo
-- Optional local Privacy Lock
-- PWA install/offline support, share target, theme-aware app chrome, and controlled update activation
 
-## Frontend architecture
+### Privacy + offline
 
-The app stays dependency-light and browser-native:
+- all primary workspace data stays in IndexedDB on the device
+- no account system and no cloud database
+- optional PBKDF2-based local privacy lock
+- installable standalone PWA
+- offline app shell and offline deep-link support
+- controlled service-worker update activation
+- Web Share Target capture
+- iPhone Add to Home Screen guidance
+- theme-aware browser/app chrome
+<!-- portfolio-refresh:end -->
 
-- `public/app.js` — UI rendering, dialogs, events, workflow orchestration
-- `public/core.js` — task normalization, dates, recurrence, Quick Add parsing, goal progress
-- `public/storage.js` — IndexedDB schema, migrations, reads/writes, storage constants
-- `public/backup.js` — backup compatibility and import validation
-- `public/privacy.js` — local privacy-code derivation/verification
-- `public/exporters.js` — CSV and Markdown generation
-- `public/sw.js` — offline app shell and controlled update activation
-- `public/style.css` — shared responsive styles
-- `public/index.html` — application shell
+## Architecture
 
-The IndexedDB database name `command-center-v2` is retained **on purpose** so existing local data remains visible.
+```text
+Browser / Installed PWA
+        │
+        ├── UI + workflows ─────► public/app.js
+        ├── task logic ─────────► public/core.js
+        ├── persistence ────────► IndexedDB via public/storage.js
+        ├── backup validation ──► public/backup.js
+        ├── local privacy ──────► public/privacy.js
+        ├── exports ────────────► public/exporters.js
+        └── offline shell ──────► public/sw.js
+```
+
+The application deliberately stays dependency-light and browser-native. The IndexedDB database name `command-center-v2` is retained on purpose so existing local data remains visible while the schema evolves.
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| UI | HTML + CSS + browser-native JavaScript |
+| Local data | IndexedDB schema v4 |
+| Preferences | localStorage / sessionStorage |
+| Offline / install | Web App Manifest + Service Worker |
+| Privacy | Web Crypto PBKDF2 + SHA-256 |
+| Exports | JSON, CSV, Markdown |
+| QA | Node regression suite + Playwright Chromium E2E |
+| Hosting | Netlify |
+
+## PWA
+
+Command Center is a real installable Progressive Web App, not just a mobile-shaped website.
+
+- `display: standalone`
+- 180×180 Apple touch icon
+- 192×192 and 512×512 PNG icons
+- 512×512 maskable icon
+- offline cache `command-center-v16`
+- offline navigation/deep-link fallback
+- Web Share Target
+- browser install prompt where supported
+- iPhone Safari Add to Home Screen guidance
+- natural device orientation
+- theme-aware app chrome
+- controlled **New version ready → Reload** update flow
 
 ## Local storage model
 
-IndexedDB schema **v4** stores:
+IndexedDB stores:
 
 - tasks
 - projects
@@ -130,41 +133,53 @@ IndexedDB schema **v4** stores:
 
 UI preferences, Saved Views, Today layout, Planner mode, and Privacy Lock metadata use localStorage/sessionStorage.
 
-Snapshots keep up to 7 rotating recovery points and cap each local snapshot at 4 MB. JSON import is capped at 8 MB and validates backup version, stores, and record shapes **before** local data is replaced.
-
-## PWA
-
-- Offline cache: `command-center-v15`
-- 180×180 Apple touch icon
-- 192×192 and 512×512 PNG icons
-- Dedicated maskable icon
-- Web Share Target support
-- Home Screen install support
-- Natural device orientation
-- Controlled “New version ready → Reload” service-worker update flow
+Snapshots keep up to 7 rotating recovery points and cap each snapshot at 4 MB. JSON import is capped at 8 MB and validates backup version, stores, and record shapes before local data is replaced.
 
 ## Quality gates
 
-Every pull request and push to `master` runs:
+GitHub CI runs two release gates:
 
-1. **Regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backup safety, PWA metadata, CSS structure, exports, privacy wiring, and dead-code checks.
-2. **Playwright Chromium E2E** — real browser workflows for CRUD, recurring tasks, Planner, Board, Focus, Goals, Review, History, recovery, exports, privacy lock, offline use, 5,000-task stress, accessibility, and mobile layout.
+1. **Regression checks** — syntax, DOM wiring, migrations, recurrence, Quick Add, backup safety, PWA metadata, CSS structure, exports, privacy wiring, and dead-code checks.
+2. **Playwright Chromium E2E** — real browser workflows for CRUD, Planner, Board, Focus, Goals, Review, History, recovery, exports, privacy lock, offline use, PWA behavior, 5,000-task stress, accessibility, and responsive layouts down to 320px.
 
-Production smoke remains a **manual** workflow while Netlify deployment is deferred.
+Deployment is deliberately separate from GitHub changes. A green CI run or repo update is **not** treated as permission to publish a new Netlify production build.
 
-## Commands
+## Repository guide
+
+- [CHANGELOG.md](./CHANGELOG.md) — release history
+- [public/index.html](./public/index.html) — application shell
+- [public/app.js](./public/app.js) — UI and workflow orchestration
+- [public/core.js](./public/core.js) — task/date/recurrence logic
+- [public/storage.js](./public/storage.js) — IndexedDB schema and migrations
+- [public/sw.js](./public/sw.js) — PWA offline/update behavior
+- [tests/e2e.spec.mjs](./tests/e2e.spec.mjs) — main browser QA
+- [tests/pwa.e2e.spec.mjs](./tests/pwa.e2e.spec.mjs) — install/offline/PWA QA
+- [tests/responsive.e2e.spec.mjs](./tests/responsive.e2e.spec.mjs) — mobile overflow coverage
+- [.github/workflows/ci.yml](./.github/workflows/ci.yml) — automated quality gates
+
+## Local setup
+
+```bash
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:4000
+```
+
+Run the quality gates with:
 
 ```bash
 npm test
 npm run check
 npm run e2e
-npm run dev
 ```
 
-Local server: http://localhost:4000
+## Release status
 
-## Deploy
+`master` is the source of truth for the current v7.3 code. Production can intentionally lag behind `master` while changes are being accumulated and tested before an approved Netlify deploy.
 
-Netlify publishes `public`. The application itself requires no secrets, cloud database, or environment variables.
-
-See [CHANGELOG.md](./CHANGELOG.md) for release history.
+The product is designed to remain local-first: no server, account system, database service, API key, or environment variable is required for the core application.
