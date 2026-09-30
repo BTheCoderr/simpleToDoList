@@ -256,19 +256,23 @@ test("Planner month week day modes persist and drag rescheduling updates dates",
   await page.locator('[data-planner-mode="day"]').click();
   await expect(page.locator("#calendarGrid")).toHaveClass(/planner-day-grid/);
 
-  await page.reload();
+  await page.goto("/?view=planner");
   await assertAppBooted(page);
   await expect(page.locator('[data-planner-mode="day"]')).toHaveClass(/active/);
 
   await page.locator('[data-planner-mode="month"]').click();
+  const targetDate=await page.evaluate(()=>{
+    const d=new Date();d.setDate(d.getDate()+1);
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  });
   const source=page.locator('[data-planner-drag-task]').filter({hasText:"Planner drag target"}).first();
-  const target=page.locator('[data-planner-date="2026-10-01"]').first();
+  const target=page.locator('[data-planner-date="'+targetDate+'"]').first();
   await source.dragTo(target);
 
   await expect.poll(async ()=>{
     const tasks=await getAll(page,"tasks");
     return tasks.find(x=>x.title==="Planner drag target")?.dueDate;
-  }).toBe("2026-10-01");
+  }).toBe(targetDate);
 });
 
 test("quick reschedule presets update task due dates",async ({page})=>{
