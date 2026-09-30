@@ -21,8 +21,9 @@ import {
   parseQuick as parseQuickCore,
   goalProgress as goalProgressCore
 } from "./core.js";
+import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 
-const SW_CACHE="command-center-v9";
+const SW_CACHE="command-center-v10";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
@@ -192,8 +193,20 @@ function startFocus(){
 function pauseFocus(){if(!state.focus.running)return;state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000));state.focus.running=false;state.focus.endAt=null;persistFocus();clearInterval(focusTimer);focusTimer=null;renderFocus()}
 function resetFocus(){clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;state.focus.remaining=state.focus.minutes*60;persistFocus();renderFocus()}
 
-async function exportAll(){var stores=await readStores(DATA_STORES),data=Object.assign({version:6,exportedAt:new Date().toISOString()},stores),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
-async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;var guard=await createSnapshot("Before JSON import");if(!guard&&!confirm("A recovery snapshot could not be created. Continue with import anyway?"))return;for(var s of DATA_STORES){await clear(s);await saveMany(s,data[s]||[])}await load();toast("Backup restored")}catch(e){console.error(e);alert("Could not import that JSON backup.")}}
+async function exportAll(){var stores=await readStores(DATA_STORES),data=Object.assign({version:BACKUP_VERSION,exportedAt:new Date().toISOString()},stores),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
+async function importAll(file){
+  if(!file)return;
+  if(file.size>MAX_IMPORT_BYTES){alert("Backup is too large to import safely. Use a smaller Command Center JSON backup.");return}
+  try{
+    var parsed=JSON.parse(await file.text()),check=validateBackupPayload(parsed,file.size);
+    if(!check.ok){alert(check.error);return}
+    if(!confirm("Replace all local data with this validated backup?"))return;
+    var guard=await createSnapshot("Before JSON import");
+    if(!guard&&!confirm("A recovery snapshot could not be created. Continue with import anyway?"))return;
+    for(var s of DATA_STORES){await clear(s);await saveMany(s,check.data[s]||[])}
+    await load();toast("Backup restored");
+  }catch(e){console.error(e);alert("Could not import that JSON backup. No data was changed.")}
+}
 function search(q){var box=$("searchBox");q=q.trim().toLowerCase();if(!q){box.classList.add("hidden");return}var r=[];activeTasks().filter(function(x){return(x.title+" "+x.description+" "+(x.subtasks||[]).map(function(s){return s.title}).join(" ")).toLowerCase().includes(q)}).forEach(function(x){r.push(["task",x.id,x.title,x.status])});state.projects.filter(function(x){return(x.name+" "+x.area).toLowerCase().includes(q)}).forEach(function(x){r.push(["projects","",x.name,x.area||"Project"])});state.notes.filter(function(x){return(x.title+" "+x.body).toLowerCase().includes(q)}).forEach(function(x){r.push(["note",x.id,x.title,"Note"])});state.goals.filter(function(x){return(x.name+" "+(x.why||"")).toLowerCase().includes(q)}).forEach(function(x){r.push(["goal",x.id,x.name,"Goal"])});box.innerHTML=r.slice(0,10).map(function(x){return'<div class="searchitem" data-search="'+x[0]+':'+x[1]+'"><b>'+esc(x[2])+'</b><small>'+esc(x[3])+'</small></div>'}).join("")||'<div class="empty">No matches.</div>';box.classList.remove("hidden")}
 function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}
 
@@ -220,7 +233,7 @@ async function deleteGoalById(id){
 }
 
 async function captureState(){
-  var stores=await readStores(DATA_STORES);return Object.assign({version:6,createdAt:new Date().toISOString()},stores);
+  var stores=await readStores(DATA_STORES);return Object.assign({version:BACKUP_VERSION,createdAt:new Date().toISOString()},stores);
 }
 function dataSizeBytes(value){try{return new Blob([JSON.stringify(value)]).size}catch(e){return JSON.stringify(value).length*2}}
 async function createSnapshot(reason){
