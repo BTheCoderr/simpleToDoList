@@ -4,13 +4,13 @@ test.beforeEach(async ({page})=>{
   await page.addInitScript(()=>localStorage.setItem("cc-onboarded-v1","1"));
 });
 
-test("production serves v6.2 and supports a persisted local task",async ({page})=>{
+test("production serves v7.3 and supports a persisted local task",async ({page})=>{
   await page.goto("/");
   await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
 
   const storageResponse=await page.request.get("/storage.js");
   expect(storageResponse.ok()).toBe(true);
-  expect(await storageResponse.text()).toContain('APP_VERSION="6.2.0"');
+  expect(await storageResponse.text()).toContain('APP_VERSION="7.3.0"');
 
   await page.getByRole("button",{name:"Tasks"}).click();
   await page.locator('#tasks [data-add="task"]').click();
@@ -27,4 +27,34 @@ test("production serves v6.2 and supports a persisted local task",async ({page})
   page.once("dialog",dialog=>dialog.accept());
   await page.locator("#deleteTask").click();
   await expect(page.locator("#taskList")).not.toContainText("Production smoke task");
+});
+
+test("production desktop and mobile release surfaces stay usable",async ({page})=>{
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
+  await expect(page.locator("#sidebar")).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
+  await page.screenshot({path:"test-results/production-desktop.png",fullPage:true});
+
+  await page.getByRole("button",{name:"Review"}).click();
+  await page.locator('#review [data-view="history"]').click();
+  await expect(page.locator("#historySearch")).toBeVisible();
+  await page.getByRole("button",{name:"Settings"}).click();
+  await expect(page.locator("#exportCsv")).toBeVisible();
+  await expect(page.locator("#exportMarkdown")).toBeVisible();
+  await expect(page.locator("#privacyLockStatus")).toBeVisible();
+
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/");
+  await expect(page.getByRole("button",{name:"Open navigation"})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
+
+  await page.getByRole("button",{name:"Open navigation"}).click();
+  await expect(page.getByRole("button",{name:/Tasks/})).toBeVisible();
+  await page.getByRole("button",{name:/Tasks/}).click();
+  await expect(page.getByRole("heading",{name:"Tasks",exact:true})).toBeVisible();
+  await expect(page.locator('#tasks [data-add="task"]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
+  await page.screenshot({path:"test-results/production-mobile.png",fullPage:true});
 });

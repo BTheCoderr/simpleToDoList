@@ -44,7 +44,7 @@ jobs:
         run: npm run e2e
 
   production-smoke:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prod-smoke]'))
     needs: [regression, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -74,3 +74,10 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: https://command-center-local.netlify.app
         run: npx playwright test tests/production.spec.mjs
+      - name: Upload production visual checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-visual-checks
+          path: test-results/production-*.png
+          if-no-files-found: ignore
