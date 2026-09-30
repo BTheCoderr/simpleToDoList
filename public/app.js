@@ -140,6 +140,7 @@ async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id
 
 
 function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
+function addMonthsClamped(d,n){var x=new Date(d),day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+n);var last=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(day,last));return x}
 function nextWeekday(d){var x=addDays(d,1);while(x.getDay()===0||x.getDay()===6)x=addDays(x,1);return x}
 function nextOccurrence(t){
   if(!t.repeat||t.repeat==="none")return "";
@@ -148,7 +149,7 @@ function nextOccurrence(t){
   if(t.repeat==="daily")next=addDays(base,1);
   else if(t.repeat==="weekdays")next=nextWeekday(base);
   else if(t.repeat==="weekly")next=addDays(base,7);
-  else if(t.repeat==="monthly"){next=new Date(base);next.setMonth(next.getMonth()+1)}
+  else if(t.repeat==="monthly")next=addMonthsClamped(base,1)
   else if(t.repeat==="custom_days"||t.repeat==="after_completion")next=addDays(base,n);
   else return "";
   var key=dateKey(next);
@@ -260,24 +261,28 @@ async function deleteGoalById(id){
 }
 
 async function captureState(){
-  var data={version:5,createdAt:new Date().toISOString()};for(var s of DATA_STORES)data[s]=await all(s);return data;
+  var stores=await readStores(DATA_STORES);return Object.assign({version:6,createdAt:new Date().toISOString()},stores);
 }
+function dataSizeBytes(value){try{return new Blob([JSON.stringify(value)]).size}catch(e){return JSON.stringify(value).length*2}}
 async function createSnapshot(reason){
   try{
-    var shot={id:uid("snap"),createdAt:new Date().toISOString(),reason:reason||"Manual snapshot",data:await captureState()};await save("snapshots",shot);
+    var data=await captureState(),bytes=dataSizeBytes(data);
+    if(bytes>MAX_SNAPSHOT_BYTES){console.warn("Snapshot skipped: workspace exceeds local snapshot limit",bytes);toast("Snapshot skipped — export JSON for this large workspace");return null}
+    var shot={id:uid("snap"),createdAt:new Date().toISOString(),reason:reason||"Manual snapshot",bytes:bytes,data:data};await save("snapshots",shot);
     var shots=(await all("snapshots")).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
-    for(var old of shots.slice(7))await del("snapshots",old.id);
+    for(var old of shots.slice(MAX_SNAPSHOTS))await del("snapshots",old.id);
     state.snapshots=await all("snapshots");renderSnapshots();return shot;
-  }catch(e){console.error("Snapshot failed",e);return null}
+  }catch(e){console.error("Snapshot failed",e);toast("Could not create recovery snapshot");return null}
 }
+function formatBytes(n){n=Number(n)||0;if(n<1024)return n+" B";if(n<1024*1024)return (n/1024).toFixed(1)+" KB";return (n/(1024*1024)).toFixed(1)+" MB"}
 function renderSnapshots(){
-  if(!$("snapshotList"))return;var shots=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,7);
-  $("snapshotList").innerHTML=shots.length?shots.map(function(s){return '<div class="snapshot-row"><div><b>'+esc(s.reason||"Snapshot")+'</b><small>'+new Date(s.createdAt).toLocaleString()+'</small></div><div class="buttons compact"><button data-restore-snapshot="'+s.id+'">Restore</button><button data-delete-snapshot="'+s.id+'">×</button></div></div>'}).join(""):'<small class="hint">No snapshots yet.</small>';
+  if(!$("snapshotList"))return;var shots=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,MAX_SNAPSHOTS);
+  $("snapshotList").innerHTML=shots.length?shots.map(function(s){return '<div class="snapshot-row"><div><b>'+esc(s.reason||"Snapshot")+'</b><small>'+new Date(s.createdAt).toLocaleString()+(s.bytes?" · "+formatBytes(s.bytes):"")+'</small></div><div class="buttons compact"><button data-restore-snapshot="'+s.id+'">Restore</button><button aria-label="Delete snapshot" data-delete-snapshot="'+s.id+'">×</button></div></div>'}).join(""):'<small class="hint">No snapshots yet.</small>';
 }
 async function restoreSnapshot(id){
   var shot=state.snapshots.find(function(s){return s.id===id});if(!shot||!confirm("Restore this snapshot? Current data will be replaced."))return;
-  await createSnapshot("Before snapshot restore");
-  for(var s of DATA_STORES){await clear(s);for(var x of (shot.data[s]||[]))await save(s,x)}
+  var guard=await createSnapshot("Before snapshot restore");if(!guard&&!confirm("A recovery snapshot could not be created. Continue anyway?"))return;
+  for(var s of DATA_STORES){await clear(s);await saveMany(s,shot.data[s]||[])}
   await load();toast("Snapshot restored");
 }
 async function ensureDailySnapshot(){
@@ -294,9 +299,9 @@ function renderShutdown(){
 }
 async function completeShutdown(e){
   e.preventDefault();await createSnapshot("Before daily shutdown");var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);var due=dateKey(tomorrow);
-  if($("shutdownRoll").checked){for(var t of activeTasks().filter(function(x){return x.status!=="done"&&x.dueDate===today()})){t.dueDate=due;await save("tasks",t)}}
+  if($("shutdownRoll").checked){var rolled=activeTasks().filter(function(x){return x.status!=="done"&&x.dueDate===today()}).map(function(t){t.dueDate=due;return t});await saveMany("tasks",rolled)}
   var vals=[$("shutdown1").value,$("shutdown2").value,$("shutdown3").value].map(function(x){return x.trim()}).filter(Boolean);
-  for(var i=0;i<vals.length;i++)await save("tasks",{id:uid("t"),title:vals[i],description:"",status:"next",priority:i===0?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null});
+  var planned=vals.map(function(title,i){return {id:uid("t"),title:title,description:"",status:"next",priority:i===0?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
   var reflection=$("shutdownReflection").value.trim();if(reflection)await save("notes",{id:uid("n"),title:"Daily shutdown — "+today(),body:reflection,pinned:false,updatedAt:new Date().toISOString()});
   await log("shutdown.completed","Daily shutdown",{planned:vals.length,rolled:$("shutdownRoll").checked});$("shutdownForm").reset();$("shutdownRoll").checked=true;await load();await createSnapshot("Daily shutdown complete");toast("Day closed. Tomorrow is planned.");
 }
@@ -360,7 +365,7 @@ function renderWeeklyReview(){
 function nextMondayKey(){var d=new Date(),delta=(8-d.getDay())%7;if(delta===0)delta=7;d.setDate(d.getDate()+delta);return dateKey(d)}
 async function planNextWeek(e){
   e.preventDefault();var vals=[$("weekly1").value,$("weekly2").value,$("weekly3").value].map(function(x){return x.trim()}).filter(Boolean);if(!vals.length){toast("Add at least one priority");return}
-  var due=nextMondayKey();for(var title of vals)await save("tasks",{id:uid("t"),title:title,description:"",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null});
+  var due=nextMondayKey(),planned=vals.map(function(title){return {id:uid("t"),title:title,description:"",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
   await log("review.planned","Weekly top priorities",{count:vals.length,dueDate:due});$("weeklyPlanForm").reset();await load();toast("Next week planned");
 }
 function templateCard(t,builtin){return '<article class="card template-card"><small class="caps">'+(builtin?"STARTER TEMPLATE":"YOUR TEMPLATE")+'</small><h3>'+esc(t.name)+'</h3><p>'+esc(t.description||t.title)+'</p><div class="meta"><span class="pill '+(t.priority||"medium")+'">'+esc(t.priority||"medium")+'</span><span class="pill">'+(t.subtasks||[]).length+' checklist</span></div><footer><div class="row"><button data-template-use="'+t.id+'" data-template-builtin="'+(builtin?"1":"0")+'" class="primary">Use template</button>'+(builtin?"":'<button data-template-edit="'+t.id+'">Edit</button>')+'</div></footer></article>'}
