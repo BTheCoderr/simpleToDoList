@@ -2,9 +2,9 @@
 
 Command Center is a private, local-first personal productivity PWA. User data stays on the device in IndexedDB; there is no account system or cloud database.
 
-## Next release: v7 Power User
+## Next release: v7.1 Smart Views + Scheduling
 
-v7 builds on the hardened local-only edition with three power-user workflows: task tags/contexts, bulk task actions, and a customizable Today dashboard. It keeps the same local IndexedDB schema and does not add a backend.
+v7.1 builds on the power-user release with Saved Task Views and richer recurring schedules. It remains fully local, keeps IndexedDB schema v4, and does not add a backend.
 
 ### Production QA
 
@@ -13,7 +13,7 @@ The release now has two quality layers:
 - **Fast regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backups, PWA metadata, CSS structure, and dependency/dead-code checks.
 - **Playwright browser QA** — real Chromium workflows covering task CRUD, Trash/restore, refresh persistence, recurring tasks, Planner, Board, Focus, Goals, Review, snapshots, export/import rejection, offline reload, 500/1,000/5,000-task stress, modal focus, and mobile large-text layout.
 
-Every pull request and push to `master` runs regression + browser E2E. While Netlify deploy credits are deferred, the live production smoke is manual and waits for v7 before testing `https://command-center-local.netlify.app`.
+Every pull request and push to `master` runs regression + browser E2E. While Netlify deploy credits are deferred, the live production smoke is manual and waits for v7.1 before testing `https://command-center-local.netlify.app`.
 
 ## Product structure
 
@@ -41,6 +41,14 @@ Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
 - **Tags / contexts** — add reusable task tags such as `#calls`, `#errands`, or `#computer`. Quick Add still resolves a matching hashtag to a project, while extra/unmatched hashtags become task tags.
 - **Bulk task actions** — filter a task list, select visible tasks, and update status, priority, project, or due date together; Archive and Trash work on the selected set too.
 - **Custom Today dashboard** — hide/show and reorder Today's priorities, Habits, Projects, and Quick inbox. Layout preferences stay in localStorage and do not affect the IndexedDB schema.
+
+### v7.1 smart views + scheduling
+
+- **Saved Task Views** — save the current status + project + tag filter combination under a name, then reopen it in one tap. Saved views live in localStorage.
+- **Selected weekday recurrence** — repeat on explicit days such as Mon/Wed/Fri.
+- **Every X weeks** — recurring tasks can now run every 2, 3, 4, etc. weeks.
+- **Quick Add scheduling** — phrases such as `Sprint review every 2 weeks` and `Gym every Mon/Wed/Fri` are parsed locally.
+
 
 
 ## Frontend architecture
@@ -75,7 +83,7 @@ Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON i
 
 ## PWA
 
-- Offline cache: `command-center-v11`
+- Offline cache: `command-center-v12`
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG install icons
 - Dedicated 512×512 maskable icon
