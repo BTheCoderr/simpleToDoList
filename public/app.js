@@ -75,7 +75,7 @@ function gname(id){var g=state.goals.find(function(x){return x.id===id});return 
 function overdue(t){return t.dueDate&&t.status!=="done"&&t.dueDate<today()}
 function fmt(d,time){if(!d)return"";var text=new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"});if(time){var x=new Date("2000-01-01T"+time);text+=" · "+x.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}return text}
 function toast(m,actionLabel,actionFn){var e=$("toast"),txt=$("toastText"),btn=$("toastAction");txt.textContent=m;btn.classList.toggle("hidden",!actionLabel);btn.textContent=actionLabel||"";btn.onclick=actionFn||null;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove("show");btn.classList.add("hidden");btn.onclick=null},actionLabel?5000:1900)}
-async function log(type,label,extra){await save("activity",Object.assign({id:uid("a"),type:type,label:label,createdAt:new Date().toISOString()},extra||{}))}
+async function log(type,label,extra){var entry=Object.assign({id:uid("a"),type:type,label:label,createdAt:new Date().toISOString()},extra||{});await save("activity",entry);state.activity.push(entry);return entry}
 function subtaskStats(t){var a=t.subtasks||[],done=a.filter(function(x){return x.done}).length;return {done:done,total:a.length}}
 function parseTagInput(value){return Array.from(new Set(String(value||"").split(/[\s,]+/).map(function(tag){return tag.replace(/^#/,"").trim().toLowerCase()}).filter(function(tag){return /^[a-z0-9_-]+$/.test(tag)})))}
 function tagPills(t){return (t.tags||[]).map(function(tag){return '<span class="pill tag-pill">#'+esc(tag)+'</span>'}).join("")}
@@ -416,7 +416,7 @@ async function quickCapture(e){e.preventDefault();var v=$("capture").value.trim(
 
 function openSimple(kind,item){$("simpleForm").reset();$("simpleKind").value=kind;$("simpleId").value=item?item.id:"";$("simpleTitle").value=item?(item.title||item.name):"";$("simpleBody").value=item&&item.body?item.body:"";$("simpleMeta").value=item&&item.area?item.area:"";$("simpleGoal").innerHTML='<option value="">No goal</option>'+state.goals.filter(function(g){return g.status!=="done"}).map(function(g){return '<option value="'+g.id+'">'+esc(g.name)+'</option>'}).join("");$("simpleGoal").value=item&&item.goalId?item.goalId:"";$("simplePin").checked=!!(item&&item.pinned);$("simpleType").textContent=kind.toUpperCase();$("simpleHeading").textContent=(item?"Edit ":"New ")+kind;$("simpleBodyWrap").classList.toggle("hidden",kind!=="note");$("simplePinWrap").classList.toggle("hidden",kind!=="note");$("simpleMetaWrap").classList.toggle("hidden",kind!=="project");$("simpleGoalWrap").classList.toggle("hidden",kind!=="project");$("deleteSimple").classList.toggle("hidden",!item||kind==="project"||kind==="habit");openDialog($("simpleModal"))}
 async function saveSimple(e){e.preventDefault();var k=$("simpleKind").value,id=$("simpleId").value,title=$("simpleTitle").value.trim();if(!title)return,editing=!!id;if(k==="project"){var oldp=state.projects.find(function(p){return p.id===id});await save("projects",{id:id||uid("p"),name:title,area:$("simpleMeta").value.trim(),goalId:$("simpleGoal").value,createdAt:oldp?oldp.createdAt:new Date().toISOString()})};if(k==="note")await save("notes",{id:id||uid("n"),title:title,body:$("simpleBody").value.trim(),pinned:$("simplePin").checked,updatedAt:new Date().toISOString()});if(k==="habit")await save("habits",{id:id||uid("h"),name:title,history:[],createdAt:new Date().toISOString()});await log(k+"."+(editing?"updated":"created"),title);$("simpleModal").close();await load();toast(k.charAt(0).toUpperCase()+k.slice(1)+" saved")}
-async function toggleHabit(id){var h=state.habits.find(function(x){return x.id===id});var set=new Set(h.history||[]);set.has(today())?set.delete(today()):set.add(today());h.history=Array.from(set);await save("habits",h);await load()}
+async function toggleHabit(id){var h=state.habits.find(function(x){return x.id===id});var set=new Set(h.history||[]),was=set.has(today());was?set.delete(today()):set.add(today());h.history=Array.from(set);await save("habits",h);await log("habit.checked",h.name,{checked:!was});await load()}
 
 function loadFocus(){
   try{state.focus=JSON.parse(localStorage.getItem("cc-focus")||"null")}catch(e){state.focus=null}
@@ -459,8 +459,8 @@ function downloadText(filename,text,type){
   var blob=new Blob([text],{type:type||"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");
   link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url)},0);
 }
-function exportTasksCsv(){downloadText("command-center-tasks-"+today()+".csv",tasksToCsv(state.tasks,state.projects),"text/csv;charset=utf-8");log("export.csv","Tasks CSV",{count:state.tasks.length});toast("Tasks CSV exported")}
-function exportWorkspaceMarkdown(){downloadText("command-center-workspace-"+today()+".md",workspaceToMarkdown(state),"text/markdown;charset=utf-8");log("export.markdown","Workspace Markdown",{tasks:state.tasks.length,projects:state.projects.length});toast("Workspace Markdown exported")}
+async function exportTasksCsv(){downloadText("command-center-tasks-"+today()+".csv",tasksToCsv(state.tasks,state.projects),"text/csv;charset=utf-8");await log("export.csv","Tasks CSV",{count:state.tasks.length});toast("Tasks CSV exported")}
+async function exportWorkspaceMarkdown(){downloadText("command-center-workspace-"+today()+".md",workspaceToMarkdown(state),"text/markdown;charset=utf-8");await log("export.markdown","Workspace Markdown",{tasks:state.tasks.length,projects:state.projects.length});toast("Workspace Markdown exported")}
 
 var PRIVACY_KEY="cc-privacy-lock-v1",PRIVACY_SESSION="cc-privacy-unlocked-v1";
 function privacyCredential(){try{return JSON.parse(localStorage.getItem(PRIVACY_KEY)||"null")}catch(e){return null}}
@@ -753,8 +753,8 @@ document.addEventListener("click",async function(e){
   if(b.dataset.editTask)openTask(state.tasks.find(function(x){return x.id===b.dataset.editTask}));
   if(b.dataset.editNote)openSimple("note",state.notes.find(function(x){return x.id===b.dataset.editNote}));
   if(b.dataset.toggleHabit)await toggleHabit(b.dataset.toggleHabit);
-  if(b.dataset.deleteHabit&&confirm("Delete this habit?")){await del("habits",b.dataset.deleteHabit);await load()}
-  if(b.dataset.deleteProject&&confirm("Delete this project? Tasks will stay.")){var id=b.dataset.deleteProject;await del("projects",id);for(var t of state.tasks.filter(function(x){return x.projectId===id}))await save("tasks",Object.assign({},t,{projectId:""}));await load()}
+  if(b.dataset.deleteHabit&&confirm("Delete this habit?")){var habit=state.habits.find(function(x){return x.id===b.dataset.deleteHabit});await del("habits",b.dataset.deleteHabit);if(habit)await log("habit.deleted",habit.name);await load()}
+  if(b.dataset.deleteProject&&confirm("Delete this project? Tasks will stay.")){var id=b.dataset.deleteProject,project=state.projects.find(function(x){return x.id===id});await del("projects",id);for(var t of state.tasks.filter(function(x){return x.projectId===id}))await save("tasks",Object.assign({},t,{projectId:""}));if(project)await log("project.deleted",project.name);await load()}
   if(b.dataset.focusProject){state.savedViewId="";state.projectFilter=b.dataset.focusProject;state.tagFilter="";state.filter="open";state.view="tasks";nav();renderTasks()}
   if(b.dataset.filter){state.savedViewId="";state.filter=b.dataset.filter;renderTasks()}
   if(b.dataset.search){var z=b.dataset.search.split(":");$("searchBox").classList.add("hidden");$("search").value="";if(z[0]==="task")openTask(state.tasks.find(function(x){return x.id===z[1]}));else if(z[0]==="note")openSimple("note",state.notes.find(function(x){return x.id===z[1]}));else if(z[0]==="goal")openGoal(state.goals.find(function(x){return x.id===z[1]}));else{state.view=z[0];nav()}}
