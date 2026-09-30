@@ -15,6 +15,8 @@ The release now has two quality layers:
 
 Every pull request runs both gates. Every push to `master` also waits for Netlify to expose v6.2 and then runs a live production smoke test against `https://command-center-local.netlify.app`.
 
+The production smoke intentionally waits for the deployed version before testing, so a delayed hosting webhook cannot produce a false green release.
+
 ## Product structure
 
 Top-level navigation stays intentionally small:
