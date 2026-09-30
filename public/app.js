@@ -151,7 +151,7 @@ function dashboardPrefs(){
 function applyDashboardLayout(){
   var grid=$("today").querySelector(".grid"),prefs=dashboardPrefs();if(!grid)return;
   prefs.order.forEach(function(key){var card=grid.querySelector('[data-dashboard-card="'+key+'"]');if(card)grid.appendChild(card)});
-  $("[data-dashboard-card]").forEach(function(card){card.classList.toggle("dashboard-hidden",prefs.hidden.includes(card.dataset.dashboardCard))});
+  $$("[data-dashboard-card]").forEach(function(card){card.classList.toggle("dashboard-hidden",prefs.hidden.includes(card.dataset.dashboardCard))});
 }
 function renderDashboardOptions(){
   if(!dashboardDraft)return;
