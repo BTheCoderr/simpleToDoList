@@ -6,7 +6,7 @@ test.beforeEach(async ({page})=>{
 
 test("production serves v6.2 and supports a persisted local task",async ({page})=>{
   await page.goto("/");
-  await expect(page.getByRole("heading",{name:"Today"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
 
   const storageResponse=await page.request.get("/storage.js");
   expect(storageResponse.ok()).toBe(true);
@@ -22,7 +22,7 @@ test("production serves v6.2 and supports a persisted local task",async ({page})
   await page.reload();
   await expect(page.locator("#taskList")).toContainText("Production smoke task");
 
-  const row=page.locator(".task-row").filter({hasText:"Production smoke task"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Production smoke task"});
   await row.locator("[data-edit-task]").first().click();
   page.once("dialog",dialog=>dialog.accept());
   await page.locator("#deleteTask").click();
