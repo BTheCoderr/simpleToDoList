@@ -25,9 +25,11 @@
         <button class="nav" data-view="planner">▣ Planner</button>
         <button class="nav" data-view="board">⊞ Board</button>
         <button class="nav" data-view="focus">◉ Focus</button>
+        <button class="nav" data-view="goals">◎ Goals</button>
         <button class="nav" data-view="projects">▦ Projects</button>
         <button class="nav" data-view="notes">✎ Notes</button>
         <button class="nav" data-view="habits">↻ Habits</button>
+        <button class="nav" data-view="shutdown">☾ Daily Shutdown</button>
         <button class="nav" data-view="review">◫ Weekly Review</button>
         <button class="nav" data-view="templates">▤ Templates</button>
         <button class="nav" data-view="archive">♲ Archive</button>
@@ -41,7 +43,7 @@
       <header>
         <button id="menu" class="icon mobile">☰</button>
         <div><small id="eyebrow">YOUR DAY</small><h1 id="title">Today</h1></div>
-        <div class="actions"><input id="search" placeholder="Search everything"><button id="addTask" class="primary">＋ Quick add</button></div>
+        <div class="actions"><input id="search" placeholder="Search everything"><button id="openPalette" class="palette-button" type="button">⌘K</button><button id="addTask" class="primary">＋ Quick add</button></div>
       </header>
       <div id="searchBox" class="searchbox hidden"></div>
 
@@ -104,6 +106,11 @@
         </div>
       </section>
 
+      <section id="goals" class="view">
+        <div class="toolbar"><p>Connect the work you do today to outcomes that actually matter.</p><button id="newGoal" class="primary">＋ New goal</button></div>
+        <div id="goalGrid" class="cards"></div>
+      </section>
+
       <section id="projects" class="view">
         <div class="toolbar"><p>Group work into outcomes you can actually finish.</p><button data-add="project" class="primary">＋ New project</button></div>
         <div id="projectGrid" class="cards"></div>
@@ -117,6 +124,34 @@
       <section id="habits" class="view">
         <div class="toolbar"><p>Simple daily actions. Check them off and keep moving.</p><button data-add="habit" class="primary">＋ New habit</button></div>
         <div class="panel"><div id="habitList" class="stack"></div></div>
+      </section>
+
+      <section id="shutdown" class="view">
+        <div class="shutdown-hero panel">
+          <small class="caps">END THE DAY ON PURPOSE</small>
+          <h2>Daily Shutdown</h2>
+          <p>Close loops, move what still matters, and decide tomorrow before you leave today.</p>
+          <div class="review-metrics">
+            <article><span>Done today</span><b id="shutdownDone">0</b></article>
+            <article><span>Still open</span><b id="shutdownOpen">0</b></article>
+            <article><span>Overdue</span><b id="shutdownOverdue">0</b></article>
+            <article><span>Last shutdown</span><b id="shutdownLast">—</b></article>
+          </div>
+        </div>
+        <div class="shutdown-grid">
+          <div class="panel"><div class="panelhead"><div><small class="caps">CLOSE LOOPS</small><h3>Still on the table</h3></div></div><div id="shutdownOpenList" class="stack"></div></div>
+          <div class="panel">
+            <div class="panelhead"><div><small class="caps">TOMORROW</small><h3>Choose the next 3</h3></div></div>
+            <form id="shutdownForm" class="shutdown-form">
+              <input id="shutdown1" placeholder="Tomorrow priority #1">
+              <input id="shutdown2" placeholder="Tomorrow priority #2">
+              <input id="shutdown3" placeholder="Tomorrow priority #3">
+              <label class="check shutdown-check"><input id="shutdownRoll" type="checkbox" checked> Move unfinished tasks due today to tomorrow</label>
+              <label>Reflection / loose ends<textarea id="shutdownReflection" rows="5" placeholder="Anything you need out of your head before you stop?"></textarea></label>
+              <button class="primary">Complete shutdown</button>
+            </form>
+          </div>
+        </div>
       </section>
 
       <section id="review" class="view">
@@ -165,6 +200,7 @@
         <div class="settings">
           <div class="panel"><h3>Appearance</h3><p>Theme is saved only on this device.</p><div class="buttons"><button id="light">Light</button><button id="dark">Dark</button></div></div>
           <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
+          <div class="panel"><h3>Automatic snapshots</h3><p>Command Center keeps rotating local recovery points before risky changes and once per day.</p><div class="buttons"><button id="createSnapshot">Create snapshot now</button></div><div id="snapshotList" class="snapshot-list"></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
           <div class="panel"><h3>Getting started</h3><p>Replay the short walkthrough whenever you want.</p><div class="buttons"><button id="replayTour">Take the tour again</button></div></div>
@@ -219,6 +255,20 @@
     </form>
   </dialog>
 
+  <dialog id="goalModal">
+    <form id="goalForm" class="modal">
+      <div class="modalhead"><div><small class="caps">GOAL</small><h2 id="goalHeading">New goal</h2></div><button type="button" data-close="goalModal" class="icon">×</button></div>
+      <input id="goalId" type="hidden">
+      <label>Goal name<input id="goalName" required maxlength="120" placeholder="What outcome are you aiming for?"></label>
+      <label>Why it matters<textarea id="goalWhy" rows="4"></textarea></label>
+      <div class="formgrid">
+        <label>Target date<input id="goalTarget" type="date"></label>
+        <label>Status<select id="goalStatus"><option value="active">Active</option><option value="paused">Paused</option><option value="done">Done</option></select></label>
+      </div>
+      <div class="modalactions"><button id="deleteGoal" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="goalModal">Cancel</button><button class="primary">Save goal</button></div>
+    </form>
+  </dialog>
+
   <dialog id="templateModal">
     <form id="templateForm" class="modal">
       <div class="modalhead"><div><small class="caps">TEMPLATE</small><h2 id="templateHeading">New template</h2></div><button type="button" data-close="templateModal" class="icon">×</button></div>
@@ -242,8 +292,30 @@
       <label>Title<input id="simpleTitle" required maxlength="120"></label>
       <label id="simpleBodyWrap">Details<textarea id="simpleBody" rows="7"></textarea></label>
       <label id="simpleMetaWrap">Area / label<input id="simpleMeta"></label>
+      <label id="simpleGoalWrap">Goal<select id="simpleGoal"><option value="">No goal</option></select></label>
       <label id="simplePinWrap" class="check"><input id="simplePin" type="checkbox"> Pin this note</label>
       <div class="modalactions"><button id="deleteSimple" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="simpleModal">Cancel</button><button class="primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="paletteModal" class="palette-dialog">
+    <div class="palette">
+      <div class="palette-search"><span>⌘</span><input id="paletteInput" autocomplete="off" placeholder="Type a command, task, project, or goal…"><button type="button" data-close="paletteModal">×</button></div>
+      <div id="paletteResults" class="palette-results"></div>
+      <div class="palette-footer"><small>↑↓ navigate · Enter select · Esc close</small></div>
+    </div>
+  </dialog>
+
+  <dialog id="shareModal">
+    <form id="shareForm" class="modal">
+      <div class="modalhead"><div><small class="caps">SHARED TO COMMAND CENTER</small><h2>Capture this</h2></div><button type="button" data-close="shareModal" class="icon">×</button></div>
+      <label>Title<input id="shareTitle" maxlength="140"></label>
+      <label>Text / link<textarea id="shareBody" rows="6"></textarea></label>
+      <div class="formgrid">
+        <label>Save as<select id="shareKind"><option value="task">Task</option><option value="note">Note</option></select></label>
+        <label>Project<select id="shareProject"><option value="">No project</option></select></label>
+      </div>
+      <div class="modalactions"><span></span><span></span><button type="button" data-close="shareModal">Cancel</button><button class="primary">Save</button></div>
     </form>
   </dialog>
 
