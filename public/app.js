@@ -323,12 +323,12 @@ function openTask(t,prefillDate){
   $("taskStatus").value=t?t.status:"inbox";$("taskPriority").value=t?t.priority:"medium";$("taskProject").value=t?t.projectId||"":"";$("taskTags").value=t?(t.tags||[]).map(function(tag){return "#"+tag}).join(" "):"";
   $("taskDue").value=t?t.dueDate||"":(prefillDate||"");$("taskTime").value=t?t.dueTime||"":"";
   $("taskRepeat").value=t?t.repeat||"none":"none";$("taskRepeatInterval").value=t?Math.max(1,Number(t.repeatInterval)||1):1;$("taskRepeatUntil").value=t?t.repeatUntil||"":"";
-  var repeatDays=t&&Array.isArray(t.repeatWeekdays)?t.repeatWeekdays.map(Number):[];$("[data-repeat-weekday]").forEach(function(input){input.checked=repeatDays.includes(Number(input.dataset.repeatWeekday))});
+  var repeatDays=t&&Array.isArray(t.repeatWeekdays)?t.repeatWeekdays.map(Number):[];$$("[data-repeat-weekday]").forEach(function(input){input.checked=repeatDays.includes(Number(input.dataset.repeatWeekday))});
   $("taskHeading").textContent=t?"Edit task":"New task";$("deleteTask").classList.toggle("hidden",!t);$("archiveTask").classList.toggle("hidden",!t);renderSubtasks();syncRepeatUI();openDialog($("taskModal"))
 }
 async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
-  var repeat=$("taskRepeat").value,repeatWeekdays=$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)});
+  var repeat=$("taskRepeat").value,repeatWeekdays=$$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)});
   if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
   var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null};
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
