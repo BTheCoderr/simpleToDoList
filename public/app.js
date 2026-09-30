@@ -586,6 +586,7 @@ function paletteCommands(q){
     {label:"Today",hint:"Go to view",action:"view:today"},
     {label:"Daily Shutdown",hint:"Close the day",action:"view:shutdown"},
     {label:"Weekly Review",hint:"Review",action:"view:review"},
+    {label:"Activity History",hint:"Audit trail",action:"view:history"},
     {label:"Focus Mode",hint:"Start focus",action:"view:focus"},
     {label:"New goal",hint:"Create",action:"new:goal"},
     {label:"New project",hint:"Create",action:"new:project"},
@@ -746,7 +747,7 @@ function render(){nav();renderTasks();renderToday();renderCalendar();renderBoard
 
 document.addEventListener("click",async function(e){
   var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task],[data-date-add]");if(!b)return;
-  if(b.dataset.view){state.view=b.dataset.view;nav();window.scrollTo(0,0);if(state.view==="focus")renderFocus()}
+  if(b.dataset.view){state.view=b.dataset.view;nav();window.scrollTo(0,0);if(state.view==="focus")renderFocus();if(state.view==="history")renderHistory()}
   if(b.dataset.add==="task")openTask();if(b.dataset.add==="project")openSimple("project");if(b.dataset.add==="note")openSimple("note");if(b.dataset.add==="habit")openSimple("habit");
   if(b.dataset.close)$(b.dataset.close).close();
   if(b.dataset.toggle)await toggleTask(b.dataset.toggle);
