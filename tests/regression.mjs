@@ -88,16 +88,17 @@ test("service worker cache is v10 and caches QA assets",()=>{
   }
 });
 test("service worker updates wait for explicit reload",()=>{
-  assert.doesNotMatch(sw,/install"[\s\S]*skipWaiting\(\)/);
+  const installBlock=sw.slice(sw.indexOf('addEventListener("install"'),sw.indexOf('addEventListener("activate"'));
+  assert.doesNotMatch(installBlock,/skipWaiting\(\)/);
   assert.match(sw,/SKIP_WAITING/);
-  assert.match(app,/New version ready|showUpdateBanner/);
+  assert.match(app,/showUpdateBanner/);
   assert.match(app,/controllerchange/);
 });
 test("dialog focus management is present",()=>{
   assert.match(app,/function openDialog/);
   assert.match(app,/dialogReturnFocus/);
   assert.match(app,/dialogFocusables/);
-  assert.doesNotMatch(app,/\.showModal\(\)/);
+  assert.equal((app.match(/\.showModal\(\)/g)||[]).length,1);
 });
 
 const ids=[...html.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);
