@@ -105,12 +105,17 @@ function parseDatePhrase(text){
 function parseQuick(text){
   var raw=text.trim(),work=raw,priority="medium",repeat="none",projectId="",dueTime="";
   var pm=work.match(/!(high|medium|low)\b/i);if(pm){priority=pm[1].toLowerCase();work=work.replace(pm[0]," ")}
-  if(/\b(daily|every day)\b/i.test(work)){repeat="daily";work=work.replace(/\b(daily|every day)\b/i," ")}else if(/\b(weekly|every week)\b/i.test(work)){repeat="weekly";work=work.replace(/\b(weekly|every week)\b/i," ")}
+  var everyDays=work.match(/\bevery\s+(\d+)\s+days?\b/i),repeatInterval=1;
+  if(everyDays){repeat="custom_days";repeatInterval=Math.max(1,Number(everyDays[1])||1);work=work.replace(everyDays[0]," ")}
+  else if(/\b(daily|every day)\b/i.test(work)){repeat="daily";work=work.replace(/\b(daily|every day)\b/i," ")}
+  else if(/\b(weekdays|every weekday)\b/i.test(work)){repeat="weekdays";work=work.replace(/\b(weekdays|every weekday)\b/i," ")}
+  else if(/\b(weekly|every week)\b/i.test(work)){repeat="weekly";work=work.replace(/\b(weekly|every week)\b/i," ")}
+  else if(/\b(monthly|every month)\b/i.test(work)){repeat="monthly";work=work.replace(/\b(monthly|every month)\b/i," ")}
   var tm=work.match(/\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i);if(tm){var h=parseInt(tm[1],10),min=tm[2]||"00",ap=tm[3].toLowerCase();if(ap==="pm"&&h<12)h+=12;if(ap==="am"&&h===12)h=0;dueTime=String(h).padStart(2,"0")+":"+min;work=work.replace(tm[0]," ")}
   var dp=parseDatePhrase(work);if(dp.phrase)work=work.replace(new RegExp("\\b"+dp.phrase.replace(" ","\\s+")+"\\b","i")," ");
   var tags=work.match(/#[a-z0-9_-]+/ig)||[];if(tags.length){var tag=tags[0].slice(1).toLowerCase().replace(/[-_]/g,"");var p=state.projects.find(function(x){var n=(x.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),a=(x.area||"").toLowerCase().replace(/[^a-z0-9]/g,"");return n===tag||n.startsWith(tag)||a===tag});if(p)projectId=p.id;work=work.replace(tags[0]," ")}
   work=work.replace(/\s+/g," ").trim();
-  return {title:work||raw,description:"",status:"inbox",priority:priority,projectId:projectId,dueDate:dp.date,dueTime:dueTime,repeat:repeat,repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null};
+  return {title:work||raw,description:"",status:"inbox",priority:priority,projectId:projectId,dueDate:dp.date,dueTime:dueTime,repeat:repeat,repeatInterval:typeof repeatInterval==="number"?repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null};
 }
 function quickPreview(){
   var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+(q.repeat!=="none"?'<span class="pill">↻ '+q.repeat+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
@@ -216,8 +221,8 @@ function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-c
 
 
 function renderWeeklyReview(){
-  var base=activeTasks(),now=new Date(),week=new Date();week.setDate(week.getDate()-7);
-  var completed=base.filter(function(t){return t.completedAt&&new Date(t.completedAt)>=week}),over=base.filter(overdue),stale=base.filter(function(t){return t.status!=="done"&&new Date(t.createdAt)<week&&!overdue(t)});
+  var base=activeTasks(),history=state.tasks.filter(function(t){return !t.deletedAt}),now=new Date(),week=new Date();week.setDate(week.getDate()-7);
+  var completed=history.filter(function(t){return t.completedAt&&new Date(t.completedAt)>=week}),over=base.filter(overdue),stale=base.filter(function(t){return t.status!=="done"&&new Date(t.createdAt)<week&&!overdue(t)});
   $("reviewCompleted").textContent=completed.length;$("reviewOverdue").textContent=over.length;$("reviewCarry").textContent=stale.length;
   $("reviewFocus").textContent=state.activity.filter(function(x){return x.type==="focus.completed"&&new Date(x.createdAt)>=week}).reduce(function(s,x){return s+(Number(x.minutes)||0)},0)+"m";
   $("reviewWins").innerHTML=completed.length?completed.slice(0,8).map(taskHTML).join(""):'<div class="empty">No completed tasks in the last 7 days yet.</div>';
