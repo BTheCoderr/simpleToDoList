@@ -23,7 +23,7 @@ import {
 } from "./core.js";
 import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 
-const SW_CACHE="command-center-v10";
+const SW_CACHE="command-center-v11";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
@@ -103,7 +103,7 @@ function filteredTasks(){
 function renderBulkBar(){
   var count=state.selectedTaskIds.size;$("bulkCount").textContent=count;$("bulkBar").classList.toggle("hidden",!state.bulkMode);$("bulkToggle").textContent=state.bulkMode?"Done selecting":"Select";
   $("taskList").classList.toggle("bulk-mode",state.bulkMode);
-  $("bulkProject").innerHTML='<option value="__keep__">Keep project</option><option value="">No project</option>'+state.projects.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join("");
+  var bulkProjectValue=$("bulkProject").value||"__keep__";$("bulkProject").innerHTML='<option value="__keep__">Keep project</option><option value="">No project</option>'+state.projects.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join("");if(Array.from($("bulkProject").options).some(function(o){return o.value===bulkProjectValue}))$("bulkProject").value=bulkProjectValue;
 }
 function renderTasks(){
   var base=activeTasks(),open=base.filter(function(t){return t.status!=="done"}).length;$("openCount").textContent=open;
