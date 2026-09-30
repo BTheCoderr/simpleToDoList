@@ -172,7 +172,8 @@ function renderTasks(){
   var base=activeTasks(),open=base.filter(function(t){return t.status!=="done"}).length;$("openCount").textContent=open;
   $("taskProject").innerHTML='<option value="">No project</option>'+state.projects.map(function(p){return'<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join("");
   var tagValue=state.tagFilter,tags=Array.from(new Set(base.flatMap(function(t){return t.tags||[]}))).sort();
-  $("tagFilter").innerHTML='<option value="">All tags</option>'+tags.map(function(tag){return'<option value="'+esc(tag)+'">#'+esc(tag)+'</option>'}).join("");if(tags.includes(tagValue))$("tagFilter").value=tagValue;else state.tagFilter="";
+  if(tagValue&&!tags.includes(tagValue)){tags.push(tagValue);tags.sort()}
+  $("tagFilter").innerHTML='<option value="">All tags</option>'+tags.map(function(tag){return'<option value="'+esc(tag)+'">#'+esc(tag)+'</option>'}).join("");$("tagFilter").value=tagValue;
   state.selectedTaskIds=new Set(Array.from(state.selectedTaskIds).filter(function(id){return base.some(function(t){return t.id===id})}));
   var a=filteredTasks();$("taskList").innerHTML=a.length?a.map(taskHTML).join(""):'<div class="empty">Nothing here.</div>';renderBulkBar();renderSavedViews();
 }
