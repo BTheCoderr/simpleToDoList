@@ -6,6 +6,24 @@
 **What it demonstrates:** JavaScript · IndexedDB · PWA/offline · Playwright · local-first product architecture · progressive enhancement.
 <!-- repo-intro:end -->
 
+<!-- portfolio-refresh:start -->
+## Portfolio snapshot
+
+| Area | Current implementation |
+| --- | --- |
+| Product | Private local-first personal operating system |
+| Storage | IndexedDB schema v4 + localStorage/sessionStorage preferences |
+| Offline | Installable PWA with controlled service-worker updates |
+| Recovery | Rotating snapshots, validated JSON restore, Archive/Trash/Undo |
+| Privacy | Optional PBKDF2-based local convenience lock |
+| QA | Regression suite + Chromium Playwright E2E including mobile/offline/stress coverage |
+
+**Production URL:** https://command-center-local.netlify.app  
+The repository is ahead of production while deployment is intentionally paused; `master` remains the source of truth for v7.3.
+
+The engineering story here is the evolution from a small to-do list into a dependency-light, local-only productivity system without introducing an account service or cloud database just to add complexity.
+<!-- portfolio-refresh:end -->
+
 Command Center keeps user data on the device in IndexedDB. There is no account system or cloud database.
 
 ## Current code release: v7.3 Local-Only Polish
