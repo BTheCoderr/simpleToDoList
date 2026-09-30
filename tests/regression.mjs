@@ -38,9 +38,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.0.0",()=>{
-  assert.equal(APP_VERSION,"7.0.0");
-  assert.equal(pkg.version,"7.0.0");
+test("release version is 7.1.0",()=>{
+  assert.equal(APP_VERSION,"7.1.0");
+  assert.equal(pkg.version,"7.1.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, and backup modules are imported",()=>{
@@ -64,7 +64,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v7/);
+  assert.match(workflow,/Wait for Netlify v7.1/);
   assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
@@ -82,8 +82,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v11 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v11/);
+test("service worker cache is v12 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v12/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -161,6 +161,24 @@ test("Today dashboard customization is local and schema-free",()=>{
   assert.match(app,/function moveDashboardCard/);
 });
 
+test("v7.1 saved task views stay local",()=>{
+  for(const id of ["savedViewSelect","saveCurrentView","deleteSavedView","savedViewModal","savedViewForm","savedViewName","savedViewSummary"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.match(app,/cc-saved-task-views-v1/);
+  assert.match(app,/function applySavedView/);
+  assert.match(app,/function saveCurrentTaskView/);
+  assert.match(app,/function deleteCurrentSavedView/);
+});
+test("v7.1 advanced recurrence controls exist without schema bump",()=>{
+  for(const id of ["repeatWeekdaysWrap","repeatIntervalUnit"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  assert.equal((html.match(/data-repeat-day=/g)||[]).length,7);
+  assert.match(html,/value="selected_weekdays"/);
+  assert.match(html,/value="custom_weeks"/);
+});
+
 test("database schema remains explicit v4",()=>assert.equal(DB_VERSION,4));
 test("migration from v2 creates v3/v4 stores",()=>{
   const existing=new Set(["tasks","projects","notes","habits","activity","templates"]);
@@ -201,6 +219,7 @@ test("normalizeTask repairs missing arrays and legacy tags",()=>{
   const task=normalizeTask({id:"x",title:"X",subtasks:null});
   assert.ok(Array.isArray(task.subtasks));
   assert.deepEqual(task.tags,[]);
+  assert.deepEqual(task.repeatWeekdays,[]);
   assert.equal(task.repeat,"none");
   const tagged=normalizeTask({id:"y",title:"Y",tags:["Calls","COMPUTER"]});
   assert.deepEqual(tagged.tags,["calls","computer"]);
@@ -214,6 +233,11 @@ test("weekday recurrence skips weekend",()=>assert.equal(recurrence("weekdays","
 test("monthly recurrence clamps end of month",()=>assert.equal(recurrence("monthly","2026-01-31"),"2026-02-28"));
 test("monthly recurrence handles leap year",()=>assert.equal(recurrence("monthly","2028-01-31"),"2028-02-29"));
 test("custom recurrence honors interval",()=>assert.equal(recurrence("custom_days","2026-01-10",{repeatInterval:3}),"2026-01-13"));
+test("every-X-weeks recurrence honors interval",()=>assert.equal(recurrence("custom_weeks","2026-01-10",{repeatInterval:2}),"2026-01-24"));
+test("selected weekday recurrence advances to next allowed day",()=>{
+  assert.equal(recurrence("selected_weekdays","2026-10-02",{repeatWeekdays:[1,3,5]}),"2026-10-05");
+  assert.equal(recurrence("selected_weekdays","2026-10-05",{repeatWeekdays:[1,3,5]}),"2026-10-07");
+});
 test("repeat-until stops future occurrence",()=>assert.equal(recurrence("weekly","2026-01-30",{repeatUntil:"2026-02-05"}),""));
 
 test("Quick Add parses priority and every-X-days recurrence",()=>{
@@ -243,6 +267,19 @@ test("Quick Add separates project hashtags from context tags",()=>{
 test("unmatched hashtags remain task tags",()=>{
   const q=parseQuick("Buy envelopes #errands #office",[]);
   assert.deepEqual(q.tags,["errands","office"]);
+});
+
+test("Quick Add parses every-X-weeks recurrence",()=>{
+  const q=parseQuick("Sprint review every 2 weeks",[]);
+  assert.equal(q.title,"Sprint review");
+  assert.equal(q.repeat,"custom_weeks");
+  assert.equal(q.repeatInterval,2);
+});
+test("Quick Add parses explicit weekday recurrence",()=>{
+  const q=parseQuick("Gym every Mon/Wed/Fri",[]);
+  assert.equal(q.title,"Gym");
+  assert.equal(q.repeat,"selected_weekdays");
+  assert.deepEqual(q.repeatWeekdays,[1,3,5]);
 });
 
 test("goal progress rolls up project tasks",()=>{
