@@ -97,6 +97,8 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
+#shutdown .view-tabs,#review .view-tabs,#analytics .view-tabs,#history .view-tabs{grid-template-columns:repeat(4,1fr)}.planner-view-tabs{grid-template-columns:repeat(3,1fr)}.history-filters{width:100%;display:grid;grid-template-columns:1fr 1fr}.history-filters input,.history-filters select{min-width:0;width:100%}.history-row{grid-template-columns:10px 1fr}.history-row time{grid-column:2}.history-main>div{align-items:flex-start;flex-direction:column;gap:2px}.history-main b{white-space:normal}.history-main span{white-space:normal}
+
 .planner-controls{width:100%;align-items:stretch;flex-direction:column}.planner-view-tabs{width:100%}.planner-week-grid{grid-template-columns:repeat(7,82vw);overflow:visible}.planner-day-grid{grid-template-columns:1fr}.planner-day-large{min-height:320px}.quick-reschedule{grid-column:1/-1}.quick-reschedule .buttons{display:grid;grid-template-columns:repeat(4,1fr)}
 
 .saved-view-bar{align-items:flex-start}.saved-views{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.saved-view-item{flex:0 0 auto}.weekday-picker{display:grid;grid-template-columns:repeat(4,1fr)}.weekday-picker label{justify-content:center;padding:9px 5px}.tasks-toolbar #projectFilter,.tasks-toolbar #tagFilter{width:100%}
@@ -183,3 +185,10 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 .planner-unscheduled-task{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);cursor:grab}.planner-unscheduled-task:active{cursor:grabbing}
 .kanban-card[draggable="true"]{cursor:grab}.kanban-card[draggable="true"]:active{cursor:grabbing}
 .quick-reschedule{display:grid;gap:6px;align-content:end}.quick-reschedule>small{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}.quick-reschedule .buttons{margin:0;gap:5px}.quick-reschedule button{padding:7px 8px;font-size:9px}
+
+/* v7.3 history + exports */
+.history-toolbar{align-items:flex-end}.history-filters{align-items:center}.history-filters input{min-width:210px}.history-filters select{min-width:140px}
+.history-list{display:grid;gap:8px}.history-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.history-row.compact{padding:8px 9px}.history-dot{width:8px;height:8px;border-radius:999px;background:var(--muted)}.history-dot.task{background:var(--accent)}.history-dot.focus{background:currentColor}.history-dot.review{box-shadow:inset 0 0 0 2px var(--accent);background:transparent}
+.history-main{min-width:0}.history-main>div{display:flex;align-items:baseline;gap:7px;min-width:0}.history-main b{font-size:11px;white-space:nowrap}.history-main span{font-size:10px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.history-main small{display:block;margin-top:3px;color:var(--muted);font-size:9px}
+.history-row time{color:var(--muted);font-size:9px;white-space:nowrap}.task-history{border-top:1px solid var(--line);padding-top:14px}.compact-history{max-height:240px;overflow:auto}
