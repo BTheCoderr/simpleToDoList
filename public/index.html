@@ -34,6 +34,7 @@
         <button class="nav" data-view="templates">▤ Templates</button>
         <button class="nav" data-view="archive">♲ Archive</button>
         <button class="nav" data-view="analytics">↗ Analytics</button>
+        <button id="sidebarPalette" class="nav" type="button">⌕ Command</button>
         <button class="nav" data-view="settings">⚙ Settings</button>
       </nav>
       <div class="local"><strong>● Stored on this device</strong><small>No account. No cloud database.</small></div>
@@ -204,6 +205,7 @@
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
           <div class="panel"><h3>Getting started</h3><p>Replay the short walkthrough whenever you want.</p><div class="buttons"><button id="replayTour">Take the tour again</button></div></div>
+          <div class="panel"><h3>Share capture</h3><p>Compatible installed PWAs can appear in the system Share menu. If your browser does not support that, copy something and open the capture inbox here.</p><div class="buttons"><button id="openShareCapture">Open share capture</button></div></div>
           <div class="panel"><h3>App health</h3><p>Check local storage, IndexedDB, service worker, and install state.</p><div class="buttons"><button id="runDiagnostics">Run app check</button></div><div id="diagnosticResults" class="diagnostics"></div></div>
           <div class="panel"><h3>Smart Quick Add</h3><p>Examples: “Call Josh tomorrow !high”, “Workout Friday #personal”, “Review budget weekly”.</p><span class="badge">LOCAL PARSER · NO AI API</span></div>
           <div class="panel"><h3>Storage</h3><p>Tasks, projects, notes, habits and history use IndexedDB. UI preferences use localStorage.</p><span class="badge">LOCAL-ONLY ARCHITECTURE</span></div>
@@ -310,7 +312,7 @@
     <form id="shareForm" class="modal">
       <div class="modalhead"><div><small class="caps">SHARED TO COMMAND CENTER</small><h2>Capture this</h2></div><button type="button" data-close="shareModal" class="icon">×</button></div>
       <label>Title<input id="shareTitle" maxlength="140"></label>
-      <label>Text / link<textarea id="shareBody" rows="6"></textarea></label>
+      <label>Text / link<textarea id="shareBody" rows="6"></textarea></label><div class="buttons compact"><button id="pasteShare" type="button">Paste clipboard</button></div>
       <div class="formgrid">
         <label>Save as<select id="shareKind"><option value="task">Task</option><option value="note">Note</option></select></label>
         <label>Project<select id="shareProject"><option value="">No project</option></select></label>
