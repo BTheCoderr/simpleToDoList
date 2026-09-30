@@ -197,7 +197,7 @@ test("saved task views persist and restore status project and tag filters",async
   await page.locator("#projectFilter").selectOption("");
   await page.locator("#tagFilter").selectOption("");
   await page.reload();
-  await page.locator("#savedViews").getByRole("button",{name:"Work calls"}).click();
+  await page.locator("#savedViews").getByRole("button",{name:"Work calls",exact:true}).click();
 
   await expect(page.locator("#projectFilter")).toHaveValue("p2");
   await expect(page.locator("#tagFilter")).toHaveValue("calls");
