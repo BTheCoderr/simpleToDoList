@@ -94,6 +94,10 @@ function nav(){
   var v=$(state.view);
   if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
+  try{
+    var url=new URL(location.href);url.searchParams.set("view",state.view);url.searchParams.delete("quick");
+    history.replaceState(null,"",url.pathname+(url.searchParams.toString()?"?"+url.searchParams.toString():""));
+  }catch(e){}
   $("sidebar").classList.remove("open");if(state.view==="settings")setTimeout(refreshSystemInfo,0);
 }
 
