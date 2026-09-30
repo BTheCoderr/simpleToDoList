@@ -13,15 +13,22 @@ import {
   MAX_SNAPSHOTS,
   runMigrations
 } from "../public/storage.js";
+import {
+  BACKUP_VERSION,
+  MAX_IMPORT_BYTES,
+  validateBackupPayload
+} from "../public/backup.js";
 
 const app=fs.readFileSync("public/app.js","utf8");
 const core=fs.readFileSync("public/core.js","utf8");
 const storage=fs.readFileSync("public/storage.js","utf8");
+const backup=fs.readFileSync("public/backup.js","utf8");
 const html=fs.readFileSync("public/index.html","utf8");
 const css=fs.readFileSync("public/style.css","utf8");
 const manifestText=fs.readFileSync("public/manifest.webmanifest","utf8");
 const sw=fs.readFileSync("public/sw.js","utf8");
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
+const workflow=fs.readFileSync(".github/workflows/ci.yml","utf8");
 
 let passed=0;
 function test(name,fn){
@@ -31,31 +38,67 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 6.1.0",()=>{
-  assert.equal(APP_VERSION,"6.1.0");
-  assert.equal(pkg.version,"6.1.0");
+test("release version is 6.2.0",()=>{
+  assert.equal(APP_VERSION,"6.2.0");
+  assert.equal(pkg.version,"6.2.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
-test("storage and core modules are imported",()=>{
+test("storage, core, and backup modules are imported",()=>{
   assert.match(app,/from "\.\/storage\.js"/);
   assert.match(app,/from "\.\/core\.js"/);
+  assert.match(app,/from "\.\/backup\.js"/);
 });
-test("legacy dead helpers are gone",()=>{
+test("legacy dead helpers remain removed",()=>{
   assert.doesNotMatch(app,/function visibleTasks\b/);
   assert.doesNotMatch(app,/focusPreset/);
   assert.doesNotMatch(app,/function parseDatePhrase\b/);
   assert.doesNotMatch(app,/function openDB\b/);
 });
-test("redundant release marker is removed",()=>assert.equal(fs.existsSync("public/release.json"),false));
+test("dependency surface stays minimal",()=>{
+  assert.ok(!pkg.dependencies||Object.keys(pkg.dependencies).length===0);
+  assert.deepEqual(Object.keys(pkg.devDependencies||{}),["@playwright/test"]);
+});
+test("browser QA files and scripts exist",()=>{
+  assert.ok(fs.existsSync("playwright.config.mjs"));
+  assert.ok(fs.existsSync("tests/e2e.spec.mjs"));
+  assert.ok(fs.existsSync("tests/production.spec.mjs"));
+  assert.equal(pkg.scripts.e2e,"playwright test");
+  assert.match(workflow,/production-smoke:/);
+  assert.match(workflow,/Wait for Netlify v6\.2/);
+});
 
 test("manifest has share target",()=>assert.equal(manifest.share_target?.action,"/?share=1"));
-test("manifest review shortcut is simplified",()=>assert.ok((manifest.shortcuts||[]).some(x=>x.url==="/?view=review")));
+test("manifest review shortcut remains simplified",()=>assert.ok((manifest.shortcuts||[]).some(x=>x.url==="/?view=review")));
 test("manifest does not force portrait orientation",()=>assert.equal("orientation" in manifest,false));
-test("shortcut icon duplication is removed",()=>assert.ok((manifest.shortcuts||[]).every(x=>!("icons" in x))));
-test("service worker cache is v9",()=>assert.match(sw,/command-center-v9/));
-test("service worker caches modules",()=>{
-  assert.match(sw,/\/core\.js/);
-  assert.match(sw,/\/storage\.js/);
+test("production PWA PNG icons exist and are declared",()=>{
+  for(const name of ["apple-touch-icon.png","icon-192.png","icon-512.png","icon-512-maskable.png"]){
+    assert.ok(fs.existsSync("public/"+name),name+" missing");
+    assert.ok(fs.statSync("public/"+name).size>1000,name+" unexpectedly small");
+  }
+  assert.ok(manifest.icons.some(x=>x.src==="/icon-192.png"&&x.sizes==="192x192"));
+  assert.ok(manifest.icons.some(x=>x.src==="/icon-512.png"&&x.sizes==="512x512"));
+  assert.ok(manifest.icons.some(x=>x.src==="/icon-512-maskable.png"&&x.purpose==="maskable"));
+  assert.match(html,/apple-touch-icon\.png/);
+});
+
+test("service worker cache is v10 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v10/);
+  for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
+    assert.ok(sw.includes(asset),asset+" not cached");
+  }
+});
+test("service worker updates wait for explicit reload",()=>{
+  const installBlock=sw.slice(sw.indexOf('addEventListener("install"'),sw.indexOf('addEventListener("activate"'));
+  assert.doesNotMatch(installBlock,/skipWaiting\(\)/);
+  assert.match(sw,/SKIP_WAITING/);
+  assert.match(app,/showUpdateBanner/);
+  assert.match(app,/controllerchange/);
+});
+test("dialog focus management is present",()=>{
+  assert.match(app,/function openDialog/);
+  assert.match(app,/dialogReturnFocus/);
+  assert.match(app,/dialogFocusables/);
+  assert.equal((app.match(/\.showModal\(\)/g)||[]).length,1);
 });
 
 const ids=[...html.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);
@@ -77,7 +120,7 @@ test("no selector accidentally uses single-id helper",()=>{
 
 const requiredViews=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","settings"];
 test("all feature views remain available",()=>requiredViews.forEach(id=>assert.ok(ids.includes(id),id+" missing")));
-test("sidebar is simplified",()=>{
+test("sidebar remains simplified",()=>{
   const sidebar=html.slice(html.indexOf("<aside"),html.indexOf("</aside>"));
   assert.doesNotMatch(sidebar,/data-view="templates"/);
   assert.doesNotMatch(sidebar,/data-view="archive"/);
@@ -115,6 +158,22 @@ test("migration from v2 creates v3/v4 stores",()=>{
 test("snapshot limits remain protected",()=>{
   assert.equal(MAX_SNAPSHOT_BYTES,4*1024*1024);
   assert.equal(MAX_SNAPSHOTS,7);
+});
+
+test("backup validator accepts complete current and v4 backups",()=>{
+  const current={version:BACKUP_VERSION,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]};
+  const now=validateBackupPayload(current,100);
+  assert.equal(now.ok,true);
+  const old={version:4,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[]};
+  const migrated=validateBackupPayload(old,100);
+  assert.equal(migrated.ok,true);
+  assert.deepEqual(migrated.data.goals,[]);
+});
+test("backup validator rejects old, partial, malformed, and oversized data",()=>{
+  assert.equal(validateBackupPayload({version:3,tasks:[]},10).ok,false);
+  assert.equal(validateBackupPayload({version:6,tasks:[]},10).ok,false);
+  assert.equal(validateBackupPayload({version:6,tasks:[null],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]},10).ok,false);
+  assert.equal(validateBackupPayload({version:6,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]},MAX_IMPORT_BYTES+1).ok,false);
 });
 
 test("normalizeTask repairs missing arrays",()=>{
@@ -163,12 +222,13 @@ test("goal progress rolls up project tasks",()=>{
   assert.equal(p.percent,50);
 });
 
-test("accessibility basics remain present",()=>{
+test("accessibility basics and update status regions remain present",()=>{
   assert.match(html,/class="skip-link"/);
   assert.match(html,/aria-live="polite"/);
+  assert.match(html,/id="updateBanner"/);
   assert.match(app,/aria-current/);
 });
-test("mobile CSS is consolidated",()=>{
+test("mobile CSS remains consolidated",()=>{
   assert.equal((css.match(/@media\(max-width:760px\)\{/g)||[]).length,1);
   assert.doesNotMatch(css,/Personal OS v5|v6 hardening|Weekly review, templates, archive/);
 });
@@ -176,6 +236,11 @@ test("CSS braces are balanced",()=>{
   let depth=0;
   for(const ch of css){if(ch==="{")depth++;else if(ch==="}")depth--;assert.ok(depth>=0,"unexpected closing brace")}
   assert.equal(depth,0);
+});
+test("backup module is actually used by import flow",()=>{
+  assert.match(backup,/MAX_IMPORT_BYTES=8\*1024\*1024/);
+  assert.match(app,/validateBackupPayload/);
+  assert.match(app,/No data was changed/);
 });
 
 console.log("\n"+passed+" regression checks passed.");
