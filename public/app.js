@@ -482,7 +482,7 @@ document.addEventListener("dragstart",function(e){var card=e.target.closest("[da
 $$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function(e){e.preventDefault();col.classList.add("dragover")});col.addEventListener("dragleave",function(){col.classList.remove("dragover")});col.addEventListener("drop",async function(e){e.preventDefault();col.classList.remove("dragover");var id=e.dataTransfer.getData("text/plain"),t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,col.dataset.dropStatus);await load();toast("Moved to "+t.status)})});
 
 $("menu").onclick=function(){$("sidebar").classList.toggle("open")};
-$("openPalette").onclick=openPalette;
+$("openPalette").onclick=openPalette;$("sidebarPalette").onclick=openPalette;
 $("addTask").onclick=function(){openQuick()};
 $("quickHelp").onclick=function(){openQuick()};
 $("captureForm").onsubmit=quickCapture;
@@ -496,6 +496,8 @@ $("goalForm").onsubmit=saveGoal;
 $("newGoal").onclick=function(){openGoal()};
 $("deleteGoal").onclick=async function(){var id=$("goalId").value;if(id){$("goalModal").close();await deleteGoalById(id)}};
 $("shareForm").onsubmit=saveSharedItem;
+$("openShareCapture").onclick=function(){openShareCapture(new URLSearchParams())};
+$("pasteShare").onclick=async function(){try{var t=await navigator.clipboard.readText();if(t)$("shareBody").value=[$("shareBody").value.trim(),t].filter(Boolean).join("\n")}catch(e){toast("Clipboard access is not available here")}};
 $("shutdownForm").onsubmit=completeShutdown;
 $("createSnapshot").onclick=async function(){await createSnapshot("Manual snapshot");toast("Snapshot created")};
 $("deleteTask").onclick=async function(){var id=$("taskId").value;if(id&&confirm("Move this task to Trash?")){$("taskModal").close();await trashTask(id)}};
