@@ -1,13 +1,12 @@
 {
-  "release": "weekly-system-v4",
-  "version": "4.0.0",
-  "commit": "50522d2ff4705fc78d2c6b483f702a4e3b9d9450",
+  "release": "personal-os-v5",
+  "version": "5.0.0",
+  "commit": "11d75e71163a8a0bc2f41b89786f5d6c820fa414",
   "features": [
-    "weekly-review",
-    "templates",
-    "archive",
-    "trash",
-    "undo",
-    "advanced-recurrence"
+    "goals",
+    "daily-shutdown",
+    "command-palette",
+    "automatic-snapshots",
+    "share-capture"
   ]
 }
