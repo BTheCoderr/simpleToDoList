@@ -92,7 +92,7 @@ test("task CRUD, Trash restore, and refresh persistence",async ({page})=>{
   await createTask(page,{title:"E2E task",priority:"high"});
   await expect(page.locator("#taskList")).toContainText("E2E task");
 
-  const row=page.locator(".task-row").filter({hasText:"E2E task"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"E2E task"});
   await row.locator("[data-edit-task]").first().click();
   await page.locator("#taskTitle").fill("E2E task edited");
   await page.getByRole("button",{name:"Save task"}).click();
@@ -101,7 +101,7 @@ test("task CRUD, Trash restore, and refresh persistence",async ({page})=>{
   await page.reload();
   await expect(page.locator("#taskList")).toContainText("E2E task edited");
 
-  const edited=page.locator(".task-row").filter({hasText:"E2E task edited"});
+  const edited=page.locator("#taskList .task-row").filter({hasText:"E2E task edited"});
   await edited.locator("[data-edit-task]").first().click();
   page.once("dialog",dialog=>dialog.accept());
   await page.locator("#deleteTask").click();
@@ -228,7 +228,7 @@ test("installed shell reopens offline and local writes still work",async ({page,
 
   await context.setOffline(true);
   await page.reload({waitUntil:"domcontentloaded"});
-  await expect(page.getByRole("heading",{name:"Today"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
 
   await page.getByRole("button",{name:"Tasks"}).click();
   await createTask(page,{title:"Offline task"});
