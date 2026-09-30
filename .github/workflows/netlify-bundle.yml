@@ -1,0 +1,35 @@
+name: Build Netlify Deploy Bundle
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Assemble deploy source
+        run: |
+          mkdir -p deploy-bundle
+          cp -R public package.json netlify.toml deploy-bundle/
+      - name: Vendor Netlify deploy client
+        run: npm install --prefix deploy-bundle/.netlify-mcp @netlify/mcp@latest --no-audit --no-fund
+      - name: Pack bundle
+        run: tar -czf netlify-deploy-bundle.tgz deploy-bundle
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-deploy-bundle
+          path: netlify-deploy-bundle.tgz
+          retention-days: 1
