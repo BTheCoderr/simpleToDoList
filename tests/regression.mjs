@@ -63,6 +63,16 @@ const context={
 vm.createContext(context);
 new vm.Script(app.slice(0,cut)).runInContext(context);
 
+test("schema migration from v2 creates v3/v4 stores",()=>{
+  const existing=new Set(["tasks","projects","notes","habits","activity","templates"]),created=[],metaWrites=[];
+  const db={objectStoreNames:{contains:n=>existing.has(n)},createObjectStore:n=>{existing.add(n);created.push(n);return {}}};
+  const tx={objectStore:n=>({put:v=>metaWrites.push([n,v])})};
+  context.runMigrations(db,tx,2,4);
+  assert.deepEqual(created,["goals","snapshots","meta"]);
+  assert.equal(metaWrites[0][0],"meta");
+  assert.equal(metaWrites[0][1].version,4);
+});
+
 test("normalizeTask repairs missing arrays",()=>{
   const t=context.normalizeTask({id:"x",title:"X",subtasks:null});
   assert.ok(Array.isArray(t.subtasks));
