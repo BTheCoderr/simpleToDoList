@@ -275,6 +275,15 @@
     </form>
   </dialog>
 
+  <dialog id="savedViewModal">
+    <form id="savedViewForm" class="modal">
+      <div class="modalhead"><div><small class="caps">TASKS</small><h2>Save current view</h2></div><button type="button" data-close="savedViewModal" class="icon" aria-label="Close">×</button></div>
+      <p id="savedViewSummary" class="hint"></p>
+      <label>View name<input id="savedViewName" required maxlength="60" placeholder="Calls for Work"></label>
+      <div class="modalactions"><span></span><span></span><button type="button" data-close="savedViewModal">Cancel</button><button class="primary">Save view</button></div>
+    </form>
+  </dialog>
+
   <dialog id="dashboardModal">
     <form id="dashboardForm" class="modal dashboard-modal">
       <div class="modalhead"><div><small class="caps">TODAY</small><h2>Customize dashboard</h2></div><button type="button" data-close="dashboardModal" class="icon" aria-label="Close">×</button></div>
@@ -287,7 +296,7 @@
   <dialog id="quickModal">
     <form id="quickForm" class="modal">
       <div class="modalhead"><div><small class="caps">SMART QUICK ADD</small><h2>Capture in one line</h2></div><button type="button" data-close="quickModal" class="icon" aria-label="Close">×</button></div>
-      <label>What needs to happen?<input id="quickInput" autocomplete="off" placeholder="Call Josh tomorrow #work !high"></label>
+      <label>What needs to happen?<input id="quickInput" autocomplete="off" placeholder="Follow up every Monday, Wednesday and Friday #calls"></label>
       <div id="quickPreview" class="quick-preview"></div>
       <small class="hint">Try: tomorrow · #project · #calls · !high · every 2 weeks · every Mon/Wed/Fri</small>
       <div class="modalactions"><span></span><span></span><button type="button" data-close="quickModal">Cancel</button><button class="primary">Add task</button></div>
