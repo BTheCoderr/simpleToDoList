@@ -127,6 +127,8 @@
           <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
+          <div class="panel"><h3>Getting started</h3><p>Replay the short walkthrough whenever you want.</p><div class="buttons"><button id="replayTour">Take the tour again</button></div></div>
+          <div class="panel"><h3>App health</h3><p>Check local storage, IndexedDB, service worker, and install state.</p><div class="buttons"><button id="runDiagnostics">Run app check</button></div><div id="diagnosticResults" class="diagnostics"></div></div>
           <div class="panel"><h3>Smart Quick Add</h3><p>Examples: “Call Josh tomorrow !high”, “Workout Friday #personal”, “Review budget weekly”.</p><span class="badge">LOCAL PARSER · NO AI API</span></div>
           <div class="panel"><h3>Storage</h3><p>Tasks, projects, notes, habits and history use IndexedDB. UI preferences use localStorage.</p><span class="badge">LOCAL-ONLY ARCHITECTURE</span></div>
         </div>
@@ -185,6 +187,21 @@
       <label id="simplePinWrap" class="check"><input id="simplePin" type="checkbox"> Pin this note</label>
       <div class="modalactions"><button id="deleteSimple" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="simpleModal">Cancel</button><button class="primary">Save</button></div>
     </form>
+  </dialog>
+
+  <dialog id="onboardingModal" class="onboarding-dialog">
+    <div class="onboarding">
+      <div class="onboarding-top">
+        <div class="brand onboarding-brand"><span>C</span><div><b>Command Center</b><small>YOUR PRIVATE PRODUCTIVITY SYSTEM</small></div></div>
+        <button id="onboardingSkip" class="link" type="button">Skip</button>
+      </div>
+      <div class="onboarding-progress"><i id="onboardingProgress"></i></div>
+      <div id="onboardingSlide" class="onboarding-slide"></div>
+      <div class="onboarding-actions">
+        <button id="onboardingBack" type="button">Back</button>
+        <button id="onboardingNext" class="primary" type="button">Next</button>
+      </div>
+    </div>
   </dialog>
 
   <div id="toast"></div>
