@@ -460,7 +460,7 @@ test("Goal to Project to Task creation preserves the hierarchy",async ({page})=>
 
   await page.locator('[data-view="projects"]').first().click();
   const project=page.locator("#projectGrid .card").filter({hasText:"Hierarchy project"}).first();
-  await project.getByRole("button",{name:"Task"}).click();
+  await project.locator("[data-project-task]").click();
   await expect(page.locator("#taskProject")).toHaveValue(/.+/);
   const projectId=await page.locator("#taskProject").inputValue();
   await page.locator("#taskTitle").fill("Hierarchy task");
@@ -480,7 +480,7 @@ test("snapshots restore a prior workspace state",async ({page})=>{
   await page.locator("#createSnapshot").click();
   await expect(page.locator("#snapshotList")).toContainText("Manual snapshot");
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await createTask(page,{title:"Temporary after snapshot"});
   await expect(page.locator("#taskList")).toContainText("Temporary after snapshot");
 
@@ -489,7 +489,7 @@ test("snapshots restore a prior workspace state",async ({page})=>{
   page.once("dialog",dialog=>dialog.accept());
   await manual.getByRole("button",{name:"Restore"}).click();
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await expect(page.locator("#taskList")).not.toContainText("Temporary after snapshot");
 });
 
@@ -536,13 +536,13 @@ test("installed shell reopens offline and local writes still work",async ({page,
   await page.reload({waitUntil:"domcontentloaded"});
   await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
 
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await createTask(page,{title:"Offline task"});
   await expect(page.locator("#taskList")).toContainText("Offline task");
 
   await context.setOffline(false);
   await page.reload();
-  await page.getByRole("button",{name:"Tasks"}).click();
+  await page.locator('[data-view="tasks"]').first().click();
   await expect(page.locator("#taskList")).toContainText("Offline task");
 });
 
