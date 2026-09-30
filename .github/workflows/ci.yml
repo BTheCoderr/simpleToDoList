@@ -21,5 +21,56 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install test tooling
+        run: npm install --no-audit --no-fund
       - name: Run release gate
         run: npm run check
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install test tooling
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser QA
+        run: npm run e2e
+
+  production-smoke:
+    if: github.event_name == 'push'
+    needs: [regression, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install test tooling
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Wait for Netlify v6.2
+        run: |
+          for i in {1..36}; do
+            if curl -fsS https://command-center-local.netlify.app/storage.js | grep -q 'APP_VERSION="6.2.0"'; then
+              echo "v6.2 is live"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for Netlify v6.2"
+          exit 1
+      - name: Smoke test production
+        env:
+          PLAYWRIGHT_BASE_URL: https://command-center-local.netlify.app
+        run: npx playwright test tests/production.spec.mjs
