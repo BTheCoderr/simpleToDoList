@@ -261,7 +261,7 @@ async function saveCurrentAsTemplate(){
 }
 function archiveRow(t,trash){return '<div class="archive-row"><div><b>'+esc(t.title)+'</b><small>'+(trash?"Trashed ":"Archived ")+new Date(trash?t.deletedAt:t.archivedAt).toLocaleDateString()+'</small></div><div class="buttons compact"><button data-restore-task="'+t.id+'">Restore</button>'+(trash?'<button class="dangerbtn" data-purge-task="'+t.id+'">Delete forever</button>':"")+'</div></div>'}
 function renderArchive(){
-  $("[data-archive-filter]").forEach(function(b){b.classList.toggle("active",b.dataset.archiveFilter===state.archiveFilter)});
+  $$("[data-archive-filter]").forEach(function(b){b.classList.toggle("active",b.dataset.archiveFilter===state.archiveFilter)});
   var trash=state.archiveFilter==="trash",items=state.tasks.filter(function(t){return trash?!!t.deletedAt:!!t.archivedAt&&!t.deletedAt}).sort(function(a,b){return new Date(trash?b.deletedAt:b.archivedAt)-new Date(trash?a.deletedAt:a.archivedAt)});
   $("archiveList").innerHTML=items.length?items.map(function(t){return archiveRow(t,trash)}).join(""):'<div class="empty">'+(trash?"Trash is empty.":"No archived tasks yet.")+'</div>';
 }
@@ -300,7 +300,7 @@ function finishOnboarding(){
   state.view="today";nav();toast("Command Center is ready");
 }
 function closeSwipeRows(except){
-  $(".task-row.reveal").forEach(function(row){if(row!==except)row.classList.remove("reveal")});
+  $$(".task-row.reveal").forEach(function(row){if(row!==except)row.classList.remove("reveal")});
 }
 async function deleteTaskById(id){var t=state.tasks.find(function(x){return x.id===id});if(!t)return;if(!confirm('Move "'+t.title+'" to Trash?'))return;await trashTask(id)}
 async function runDiagnostics(){
