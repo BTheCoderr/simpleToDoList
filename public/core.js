@@ -9,13 +9,14 @@ export function normalizeTask(task){
     repeat:"none",
     repeatInterval:1,
     repeatUntil:"",
+    repeatWeekdays:[],
     tags:[],
     subtasks:[],
     createdAt:new Date().toISOString(),
     completedAt:null,
     archivedAt:null,
     deletedAt:null
-  },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[]});
+  },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[],repeatWeekdays:Array.isArray(task.repeatWeekdays)?task.repeatWeekdays.map(Number).filter(day=>day>=0&&day<=6):[]});
 }
 
 export function dateKey(date){
@@ -61,6 +62,13 @@ export function nextOccurrence(task,now=new Date()){
   if(task.repeat==="daily")next=addDays(base,1);
   else if(task.repeat==="weekdays")next=nextWeekday(base);
   else if(task.repeat==="weekly")next=addDays(base,7);
+  else if(task.repeat==="custom_weeks")next=addDays(base,7*interval);
+  else if(task.repeat==="selected_weekdays"){
+    const allowed=new Set((task.repeatWeekdays||[]).map(Number));
+    if(!allowed.size)return "";
+    next=addDays(base,1);
+    for(let i=0;i<7&&!allowed.has(next.getDay());i++)next=addDays(next,1);
+  }
   else if(task.repeat==="monthly")next=addMonthsClamped(base,1);
   else if(task.repeat==="custom_days"||task.repeat==="after_completion")next=addDays(base,interval);
   else return "";
@@ -93,20 +101,37 @@ export function parseDatePhrase(text,now=new Date()){
   return found?{date:dateKey(date),phrase:found}:{date:"",phrase:""};
 }
 
+export function parseWeekdayList(value){
+  const map={sun:0,sunday:0,mon:1,monday:1,tue:2,tues:2,tuesday:2,wed:3,wednesday:3,thu:4,thur:4,thurs:4,thursday:4,fri:5,friday:5,sat:6,saturday:6};
+  return Array.from(new Set(String(value||"").toLowerCase().split(/[\s,\/&]+/).map(x=>map[x]).filter(x=>Number.isInteger(x)))).sort((a,b)=>a-b);
+}
+
 export function parseQuick(text,projects=[],now=new Date()){
   const raw=text.trim();
   let work=raw;
   let priority="medium";
   let repeat="none";
   let repeatInterval=1;
+  let repeatWeekdays=[];
   let projectId="";
   let dueTime="";
 
   const priorityMatch=work.match(/!(high|medium|low)\b/i);
   if(priorityMatch){priority=priorityMatch[1].toLowerCase();work=work.replace(priorityMatch[0]," ")}
 
+  const weekdayNames="(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)";
+  const everyWeekdays=work.match(new RegExp("\\bevery\\s+("+weekdayNames+"(?:\\s*[/,&]\\s*"+weekdayNames+")+)\\b","i"));
+  const everyWeeks=work.match(/\bevery\s+(\d+)\s+weeks?\b/i);
   const everyDays=work.match(/\bevery\s+(\d+)\s+days?\b/i);
-  if(everyDays){
+  if(everyWeekdays){
+    repeatWeekdays=parseWeekdayList(everyWeekdays[1]);
+    repeat=repeatWeekdays.length?"selected_weekdays":"none";
+    work=work.replace(everyWeekdays[0]," ");
+  }else if(everyWeeks){
+    repeat="custom_weeks";
+    repeatInterval=Math.max(1,Number(everyWeeks[1])||1);
+    work=work.replace(everyWeeks[0]," ");
+  }else if(everyDays){
     repeat="custom_days";
     repeatInterval=Math.max(1,Number(everyDays[1])||1);
     work=work.replace(everyDays[0]," ");
@@ -158,6 +183,7 @@ export function parseQuick(text,projects=[],now=new Date()){
     repeat,
     repeatInterval,
     repeatUntil:"",
+    repeatWeekdays,
     tags:taskTags,
     subtasks:[],
     createdAt:new Date(now).toISOString(),
