@@ -66,9 +66,10 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/e2e.spec.mjs"));
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
-  assert.match(workflow,/production-smoke:/);
   assert.match(workflow,/Wait for Netlify v7.3/);
-  assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
+  assert.match(workflow,/Smoke test production/);
+  assert.match(workflow,/\[prod-smoke\]/);
+  assert.doesNotMatch(workflow,/^  production-smoke:/m);
 });
 
 test("manifest has share target",()=>assert.equal(manifest.share_target?.action,"/?share=1"));
