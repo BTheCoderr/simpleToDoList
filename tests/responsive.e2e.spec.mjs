@@ -44,10 +44,12 @@ test("Daily Shutdown stays inside phone viewports",async ({page})=>{
 });
 
 test("primary views do not create document-level phone overflow",async ({page})=>{
-  await page.setViewportSize({width:390,height:844});
   const views=["today","tasks","projects","notes","habits","goals","calendar","board","focus","shutdown","review","analytics","history","settings"];
-  for(const view of views){
-    await page.goto("/?view="+view);
-    await assertNoDocumentOverflow(page,view);
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:844});
+    for(const view of views){
+      await page.goto("/?view="+view);
+      await assertNoDocumentOverflow(page,view+" at "+width+"px");
+    }
   }
 });
