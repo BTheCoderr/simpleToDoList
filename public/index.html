@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1020">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,6 +22,9 @@
       <nav>
         <button class="nav active" data-view="today">⌂ Today</button>
         <button class="nav" data-view="tasks">✓ Tasks <i id="openCount">0</i></button>
+        <button class="nav" data-view="planner">▣ Planner</button>
+        <button class="nav" data-view="board">⊞ Board</button>
+        <button class="nav" data-view="focus">◉ Focus</button>
         <button class="nav" data-view="projects">▦ Projects</button>
         <button class="nav" data-view="notes">✎ Notes</button>
         <button class="nav" data-view="habits">↻ Habits</button>
@@ -50,16 +53,52 @@
           </div>
         </div>
         <div class="grid">
-          <div class="panel wide"><div class="panelhead"><div><small class="caps">FOCUS</small><h3>Today's priorities</h3></div><button data-add="task" class="link">Add task</button></div><div id="todayTasks" class="stack"></div></div>
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">FOCUS</small><h3>Today's priorities</h3></div><button data-view="focus" class="link">Start focus</button></div><div id="todayTasks" class="stack"></div></div>
           <div class="panel"><div class="panelhead"><div><small class="caps">MOMENTUM</small><h3>Habits</h3></div></div><div id="todayHabits" class="stack"></div></div>
           <div class="panel"><div class="panelhead"><div><small class="caps">PROGRESS</small><h3>Projects</h3></div></div><div id="todayProjects" class="stack"></div></div>
-          <div class="panel wide"><div class="panelhead"><div><small class="caps">CAPTURE</small><h3>Quick inbox</h3></div></div><form id="captureForm" class="capture"><input id="capture" placeholder="What do you need to remember?"><button class="primary">Capture</button></form></div>
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">SMART CAPTURE</small><h3>Quick inbox</h3></div><button id="quickHelp" class="link" type="button">Syntax</button></div><form id="captureForm" class="capture"><input id="capture" autocomplete="off" placeholder="Call Josh tomorrow 3pm #work !high"><button class="primary">Capture</button></form><small class="hint">Understands today/tomorrow/weekdays, #project, !high / !medium / !low, daily / weekly.</small></div>
         </div>
       </section>
 
       <section id="tasks" class="view">
         <div class="toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button></div><button data-add="task" class="primary">＋ New task</button></div>
         <div class="panel"><div id="taskList" class="stack"></div></div>
+      </section>
+
+      <section id="planner" class="view">
+        <div class="toolbar"><div><p>Put deadlines on the map. Tap any day to create a task there.</p></div><div class="buttons compact"><button id="calPrev">‹</button><button id="calToday">Today</button><button id="calNext">›</button></div></div>
+        <div class="panel calendar-panel">
+          <div class="calendar-title"><h2 id="calendarTitle"></h2></div>
+          <div class="weekday-row"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </div>
+        <div class="panel planner-unscheduled"><div class="panelhead"><div><small class="caps">NO DATE YET</small><h3>Unscheduled</h3></div></div><div id="unscheduledTasks" class="stack"></div></div>
+      </section>
+
+      <section id="board" class="view">
+        <div class="toolbar"><p>Move work through the system. Drag cards on desktop; tap a card to edit on mobile.</p><button data-add="task" class="primary">＋ New task</button></div>
+        <div id="kanban" class="kanban">
+          <div class="kanban-col" data-drop-status="inbox"><div class="kanban-head"><b>Inbox</b><span id="countInbox">0</span></div><div id="boardInbox" class="kanban-list"></div></div>
+          <div class="kanban-col" data-drop-status="next"><div class="kanban-head"><b>Next</b><span id="countNext">0</span></div><div id="boardNext" class="kanban-list"></div></div>
+          <div class="kanban-col" data-drop-status="doing"><div class="kanban-head"><b>Doing</b><span id="countDoing">0</span></div><div id="boardDoing" class="kanban-list"></div></div>
+          <div class="kanban-col" data-drop-status="done"><div class="kanban-head"><b>Done</b><span id="countDone">0</span></div><div id="boardDone" class="kanban-list"></div></div>
+        </div>
+      </section>
+
+      <section id="focus" class="view">
+        <div class="focus-shell">
+          <div class="focus-card">
+            <small class="caps">DEEP WORK</small>
+            <h2>Focus Mode</h2>
+            <p id="focusStatusText">Pick one task. Everything else can wait.</p>
+            <select id="focusTask"></select>
+            <div class="focus-presets"><button data-minutes="25">25 min</button><button data-minutes="50">50 min</button><button data-minutes="90">90 min</button></div>
+            <div id="focusClock">25:00</div>
+            <div class="focus-actions"><button id="focusStart" class="primary">Start focus</button><button id="focusPause">Pause</button><button id="focusReset">Reset</button></div>
+            <button id="focusComplete" class="successbtn">✓ Complete task</button>
+          </div>
+          <div class="panel focus-side"><small class="caps">TODAY</small><h3>Focus history</h3><div id="focusHistory" class="stack"></div></div>
+        </div>
       </section>
 
       <section id="projects" class="view">
@@ -78,7 +117,7 @@
       </section>
 
       <section id="analytics" class="view">
-        <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
+        <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Focus minutes</span><b id="aFocus">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
         <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
       </section>
 
@@ -88,6 +127,7 @@
           <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
+          <div class="panel"><h3>Smart Quick Add</h3><p>Examples: “Call Josh tomorrow !high”, “Workout Friday #personal”, “Review budget weekly”.</p><span class="badge">LOCAL PARSER · NO AI API</span></div>
           <div class="panel"><h3>Storage</h3><p>Tasks, projects, notes, habits and history use IndexedDB. UI preferences use localStorage.</p><span class="badge">LOCAL-ONLY ARCHITECTURE</span></div>
         </div>
       </section>
@@ -95,7 +135,11 @@
   </div>
 
   <nav class="bottom">
-    <button class="active" data-view="today">⌂<small>Today</small></button><button data-view="tasks">✓<small>Tasks</small></button><button data-view="projects">▦<small>Projects</small></button><button data-view="notes">✎<small>Notes</small></button><button data-view="settings">⚙<small>More</small></button>
+    <button class="active" data-view="today">⌂<small>Today</small></button>
+    <button data-view="tasks">✓<small>Tasks</small></button>
+    <button data-view="planner">▣<small>Plan</small></button>
+    <button data-view="board">⊞<small>Board</small></button>
+    <button data-view="focus">◉<small>Focus</small></button>
   </nav>
 
   <dialog id="taskModal">
@@ -111,7 +155,22 @@
         <label>Due date<input id="taskDue" type="date"></label>
         <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label>
       </div>
+      <div class="subtask-editor">
+        <div class="panelhead"><div><small class="caps">CHECKLIST</small><h3>Subtasks</h3></div><span id="subtaskProgress" class="pill">0/0</span></div>
+        <div id="subtaskList" class="subtask-list"></div>
+        <div class="capture"><input id="newSubtask" type="text" placeholder="Add a checklist item"><button id="addSubtask" type="button">Add</button></div>
+      </div>
       <div class="modalactions"><button id="deleteTask" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="quickModal">
+    <form id="quickForm" class="modal">
+      <div class="modalhead"><div><small class="caps">SMART QUICK ADD</small><h2>Capture in one line</h2></div><button type="button" data-close="quickModal" class="icon">×</button></div>
+      <label>What needs to happen?<input id="quickInput" autocomplete="off" placeholder="Call Josh tomorrow #work !high"></label>
+      <div id="quickPreview" class="quick-preview"></div>
+      <small class="hint">Try: tomorrow · next Monday · #project · !high · daily · weekly</small>
+      <div class="modalactions"><span></span><span></span><button type="button" data-close="quickModal">Cancel</button><button class="primary">Add task</button></div>
     </form>
   </dialog>
 
