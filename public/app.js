@@ -342,7 +342,7 @@ async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id
 
 async function spawnNextOccurrence(t){
   var due=nextOccurrence(t);if(!due)return;
-  var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
+  var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,boardOrder:null,subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
   await save("tasks",copy);await log("task.recurred",t.title,{nextDue:due});
 }
 async function setTaskStatus(t,status){
@@ -367,7 +367,7 @@ async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
   var repeat=$("taskRepeat").value,repeatWeekdays=repeat==="selected_weekdays"?$$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)}):[];
   if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
-  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null};
+  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null,boardOrder:old?old.boardOrder:null};
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
