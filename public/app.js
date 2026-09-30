@@ -88,11 +88,11 @@ function repeatLabel(t){
 function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
-  var navView=["templates","archive"].includes(state.view)?"tasks":["shutdown","analytics"].includes(state.view)?"review":state.view;
+  var navView=["templates","archive"].includes(state.view)?"tasks":["shutdown","analytics","history"].includes(state.view)?"review":state.view;
   $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===navView;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
-  if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
+  if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",history:"History",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",history:"ACTIVITY",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
   try{
     var url=new URL(location.href);url.searchParams.set("view",state.view);url.searchParams.delete("quick");
@@ -336,6 +336,54 @@ function renderAnalytics(){
   bars("statusBars",[["inbox",base.filter(function(t){return t.status==="inbox"}).length],["next",base.filter(function(t){return t.status==="next"}).length],["doing",base.filter(function(t){return t.status==="doing"}).length],["done",done]],total);
 }
 
+function activityGroup(type){
+  if(String(type||"").startsWith("task."))return "task";
+  if(String(type||"").startsWith("focus."))return "focus";
+  if(String(type||"").startsWith("review.")||String(type||"").startsWith("shutdown."))return "review";
+  return "other";
+}
+function activityTitle(item){
+  var labels={
+    "task.created":"Task created","task.updated":"Task updated","task.status":"Status changed","task.rescheduled":"Task rescheduled",
+    "task.recurred":"Recurring task advanced","task.trashed":"Moved to Trash","task.archived":"Task archived","task.restored":"Task restored",
+    "task.board":"Board order changed","task.bulk-updated":"Bulk task update","task.bulk-archived":"Bulk archive","task.bulk-trashed":"Bulk trash",
+    "focus.completed":"Focus completed","review.planned":"Weekly plan created","shutdown.completed":"Daily shutdown completed",
+    "template.used":"Template used","share.captured":"Shared item captured"
+  };
+  return labels[item.type]||String(item.type||"Activity").replace(/[._-]+/g," ").replace(/\b\w/g,function(c){return c.toUpperCase()});
+}
+function activityMeta(item){
+  var parts=[];
+  if(item.fromStatus||item.status)parts.push((item.fromStatus?item.fromStatus+" → ":"")+(item.status||""));
+  if(item.dueDate)parts.push(item.dueDate?"Due "+item.dueDate:"Date cleared");
+  if(item.minutes)parts.push(item.minutes+" min");
+  if(item.nextDue)parts.push("Next "+item.nextDue);
+  if(item.count)parts.push(item.count+" items");
+  return parts.filter(Boolean).join(" · ");
+}
+function activityRow(item,compact){
+  var date=new Date(item.createdAt),meta=activityMeta(item);
+  return '<div class="history-row '+(compact?"compact":"")+'"><div class="history-dot '+activityGroup(item.type)+'"></div><div class="history-main"><div><b>'+esc(activityTitle(item))+'</b><span>'+esc(item.label||"")+'</span></div>'+(meta?'<small>'+esc(meta)+'</small>':"")+'</div><time datetime="'+esc(item.createdAt||"")+'">'+(isNaN(date)? "":date.toLocaleString([],compact?{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}:{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))+'</time></div>'
+}
+function activityMatchesTask(item,id){return item.taskId===id||(Array.isArray(item.taskIds)&&item.taskIds.includes(id))}
+function renderTaskHistory(id){
+  var wrap=$("taskHistoryWrap"),list=$("taskHistoryList");if(!wrap||!list)return;
+  wrap.classList.toggle("hidden",!id);if(!id){list.innerHTML="";return}
+  var items=state.activity.filter(function(item){return activityMatchesTask(item,id)}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,8);
+  list.innerHTML=items.length?items.map(function(item){return activityRow(item,true)}).join(""):'<div class="empty small-empty">No task history yet.</div>';
+}
+function renderHistory(){
+  if(!$("historyList"))return;
+  var query=($("historySearch").value||"").trim().toLowerCase(),group=$("historyType").value||"";
+  var items=state.activity.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).filter(function(item){
+    if(group&&activityGroup(item.type)!==group)return false;
+    if(!query)return true;
+    return (String(item.label||"")+" "+String(item.type||"")+" "+activityTitle(item)+" "+activityMeta(item)).toLowerCase().includes(query);
+  }).slice(0,500);
+  $("historyCount").textContent=items.length;
+  $("historyList").innerHTML=items.length?items.map(function(item){return activityRow(item,false)}).join(""):'<div class="empty">No matching activity yet.</div>';
+}
+
 function parseQuick(text){return parseQuickCore(text,state.projects)}
 function quickPreview(){
   var q=parseQuick($("quickInput").value||""),p=pname(q.projectId);$("quickPreview").innerHTML=q.title?'<b>'+esc(q.title)+'</b><div class="meta"><span class="pill '+q.priority+'">'+q.priority+'</span>'+(q.dueDate?'<span class="pill">'+fmt(q.dueDate,q.dueTime)+'</span>':"")+(p?'<span class="pill">'+esc(p)+'</span>':"")+tagPills(q)+(q.repeat!=="none"?'<span class="pill">↻ '+esc(repeatLabel(q))+'</span>':"")+'</div>':'<span class="hint">Your parsed task will appear here.</span>';
@@ -365,7 +413,7 @@ function openTask(t,prefillDate){
   $("taskDue").value=t?t.dueDate||"":(prefillDate||"");$("taskTime").value=t?t.dueTime||"":"";
   $("taskRepeat").value=t?t.repeat||"none":"none";$("taskRepeatInterval").value=t?Math.max(1,Number(t.repeatInterval)||1):1;$("taskRepeatUntil").value=t?t.repeatUntil||"":"";
   var repeatDays=t&&Array.isArray(t.repeatWeekdays)?t.repeatWeekdays.map(Number):[];$$("[data-repeat-weekday]").forEach(function(input){input.checked=repeatDays.includes(Number(input.dataset.repeatWeekday))});
-  $("taskHeading").textContent=t?"Edit task":"New task";$("deleteTask").classList.toggle("hidden",!t);$("archiveTask").classList.toggle("hidden",!t);renderSubtasks();syncRepeatUI();openDialog($("taskModal"))
+  $("taskHeading").textContent=t?"Edit task":"New task";$("deleteTask").classList.toggle("hidden",!t);$("archiveTask").classList.toggle("hidden",!t);renderSubtasks();renderTaskHistory(t?t.id:"");syncRepeatUI();openDialog($("taskModal"))
 }
 async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
@@ -425,6 +473,34 @@ function startFocus(){
 }
 function pauseFocus(){if(!state.focus.running)return;state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000));state.focus.running=false;state.focus.endAt=null;persistFocus();clearInterval(focusTimer);focusTimer=null;renderFocus()}
 function resetFocus(){clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;state.focus.remaining=state.focus.minutes*60;persistFocus();renderFocus()}
+
+function downloadText(filename,mime,text){
+  var blob=new Blob([text],{type:mime}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;link.click();setTimeout(function(){URL.revokeObjectURL(url)},0)
+}
+function csvValue(value){return '"'+String(value==null?"":value).replace(/"/g,'""').replace(/\r?\n/g," ")+'"'}
+function taskLifecycle(t){return t.deletedAt?"trash":t.archivedAt?"archived":t.status}
+async function exportTasksCsv(){
+  var tasks=(await all("tasks")).map(normalizeTask),headers=["id","title","description","status","lifecycle","priority","project","tags","due_date","due_time","repeat","created_at","completed_at","archived_at","deleted_at"];
+  var rows=[headers.map(csvValue).join(",")].concat(tasks.map(function(t){return [
+    t.id,t.title,t.description,t.status,taskLifecycle(t),t.priority,pname(t.projectId),(t.tags||[]).join(" "),t.dueDate,t.dueTime,repeatLabel(t),t.createdAt,t.completedAt,t.archivedAt,t.deletedAt
+  ].map(csvValue).join(",")}));
+  downloadText("command-center-tasks-"+today()+".csv","text/csv;charset=utf-8",rows.join("\n"));
+}
+function markdownSafe(value){return String(value||"").replace(/\r?\n/g," ").trim()}
+function exportWorkspaceMarkdown(){
+  var lines=["# Command Center Workspace","","Exported: "+new Date().toLocaleString(),"","## Goals",""];
+  if(state.goals.length)state.goals.forEach(function(g){lines.push("- **"+markdownSafe(g.name)+"** — "+markdownSafe(g.status)+(g.targetDate?" · target "+g.targetDate:""))});else lines.push("_No goals._");
+  lines.push("","## Projects","");
+  if(state.projects.length)state.projects.forEach(function(p){lines.push("- **"+markdownSafe(p.name)+"**"+(p.area?" · "+markdownSafe(p.area):"")+(p.goalId?" · Goal: "+markdownSafe(gname(p.goalId)):""))});else lines.push("_No projects._");
+  lines.push("","## Active Tasks","");
+  var tasks=activeTasks().slice().sort(function(a,b){return taskScore(a)-taskScore(b)});
+  if(tasks.length)tasks.forEach(function(t){lines.push("- ["+(t.status==="done"?"x":" ")+"] **"+markdownSafe(t.title)+"** · "+t.status+" · "+t.priority+(t.dueDate?" · due "+t.dueDate:"")+(t.projectId?" · "+markdownSafe(pname(t.projectId)):"")+((t.tags||[]).length?" · "+t.tags.map(function(tag){return "#"+tag}).join(" "):""))});else lines.push("_No active tasks._");
+  lines.push("","## Notes","");
+  if(state.notes.length)state.notes.forEach(function(n){lines.push("### "+markdownSafe(n.title),"",markdownSafe(n.body),"")});else lines.push("_No notes._","");
+  lines.push("## Habits","");
+  if(state.habits.length)state.habits.forEach(function(h){lines.push("- **"+markdownSafe(h.name)+"** · "+(h.history||[]).length+" check-ins")});else lines.push("_No habits._");
+  downloadText("command-center-workspace-"+today()+".md","text/markdown;charset=utf-8",lines.join("\n"));
+}
 
 async function exportAll(){var stores=await readStores(DATA_STORES),data=Object.assign({version:BACKUP_VERSION,exportedAt:new Date().toISOString()},stores),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
 async function importAll(file){
@@ -674,7 +750,7 @@ async function runDiagnostics(){
   box.innerHTML=checks.map(function(c){return'<div class="diag-row '+(c[1]?"pass":"warn")+'"><b>'+(c[1]?"✓":"! ")+' '+esc(c[0])+'</b><small>'+esc(c[2])+'</small></div>'}).join("");
   toast(checks.every(function(c){return c[1]})?"App check passed":"App check finished");
 }
-function render(){nav();renderTasks();renderToday();renderCalendar();renderBoard();renderGoals();renderProjects();renderNotes();renderHabits();renderShutdown();renderWeeklyReview();renderTemplates();renderArchive();renderAnalytics();renderFocus();renderSnapshots();theme()}
+function render(){nav();renderTasks();renderToday();renderCalendar();renderBoard();renderGoals();renderProjects();renderNotes();renderHabits();renderShutdown();renderWeeklyReview();renderTemplates();renderArchive();renderAnalytics();renderHistory();renderFocus();renderSnapshots();theme()}
 
 document.addEventListener("click",async function(e){
   var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task],[data-date-add]");if(!b)return;
@@ -796,7 +872,7 @@ $("deleteTemplate").onclick=async function(){var id=$("templateId").value;if(id&
 $("weeklyPlanForm").onsubmit=planNextWeek;
 $("archiveCompleted").onclick=archiveCompleted;
 $("deleteSimple").onclick=async function(){var k=$("simpleKind").value,id=$("simpleId").value;if(id&&confirm("Delete this "+k+"?")){await del(k==="note"?"notes":k+"s",id);$("simpleModal").close();await load()}};
-$("search").oninput=function(e){search(e.target.value)};
+$("search").oninput=function(e){search(e.target.value)};$("historySearch").oninput=renderHistory;$("historyType").onchange=renderHistory;
 $$("[data-planner-mode]").forEach(function(b){b.onclick=function(){state.plannerMode=b.dataset.plannerMode;localStorage.setItem("cc-planner-mode",state.plannerMode);renderCalendar()}});
 function shiftPlanner(amount){var d=new Date(state.calendarCursor),mode=state.plannerMode||"month";if(mode==="month")d.setMonth(d.getMonth()+amount);else if(mode==="week")d.setDate(d.getDate()+7*amount);else d.setDate(d.getDate()+amount);state.calendarCursor=d;renderCalendar()}
 $("calPrev").onclick=function(){shiftPlanner(-1)};
@@ -806,7 +882,7 @@ $("focusStart").onclick=startFocus;$("focusPause").onclick=pauseFocus;$("focusRe
 $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();renderFocus()};
 $("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}await setTaskStatus(t,"done");pauseFocus();await load();toast("Task completed")};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
-$("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
+$("export").onclick=exportAll;$("exportCsv").onclick=exportTasksCsv;$("exportMarkdown").onclick=exportWorkspaceMarkdown;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
 $("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;var guard=await createSnapshot("Before workspace reset");if(!guard&&!confirm("Recovery snapshot failed. Reset anyway?"))return;for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
 $("replayTour").onclick=function(){openOnboarding(true)};
 $("runDiagnostics").onclick=runDiagnostics;$("refreshSystemInfo").onclick=refreshSystemInfo;
