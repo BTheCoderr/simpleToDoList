@@ -28,6 +28,9 @@
         <button class="nav" data-view="projects">▦ Projects</button>
         <button class="nav" data-view="notes">✎ Notes</button>
         <button class="nav" data-view="habits">↻ Habits</button>
+        <button class="nav" data-view="review">◫ Weekly Review</button>
+        <button class="nav" data-view="templates">▤ Templates</button>
+        <button class="nav" data-view="archive">♲ Archive</button>
         <button class="nav" data-view="analytics">↗ Analytics</button>
         <button class="nav" data-view="settings">⚙ Settings</button>
       </nav>
@@ -116,6 +119,43 @@
         <div class="panel"><div id="habitList" class="stack"></div></div>
       </section>
 
+      <section id="review" class="view">
+        <div class="review-hero panel">
+          <small class="caps">WEEKLY RESET</small>
+          <h2>Review the week. Choose the next one.</h2>
+          <p>Command Center pulls the signal from your local history so unfinished work does not quietly disappear.</p>
+          <div class="review-metrics">
+            <article><span>Completed</span><b id="reviewCompleted">0</b></article>
+            <article><span>Overdue</span><b id="reviewOverdue">0</b></article>
+            <article><span>Carry over</span><b id="reviewCarry">0</b></article>
+            <article><span>Focus</span><b id="reviewFocus">0m</b></article>
+          </div>
+        </div>
+        <div class="grid review-grid">
+          <div class="panel"><div class="panelhead"><div><small class="caps">WINS</small><h3>Completed this week</h3></div></div><div id="reviewWins" class="stack"></div></div>
+          <div class="panel"><div class="panelhead"><div><small class="caps">DECIDE</small><h3>Overdue / stale</h3></div></div><div id="reviewNeedsAttention" class="stack"></div></div>
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">NEXT WEEK</small><h3>Choose your top 3</h3></div></div>
+            <form id="weeklyPlanForm" class="weekly-plan">
+              <input id="weekly1" placeholder="Priority #1">
+              <input id="weekly2" placeholder="Priority #2">
+              <input id="weekly3" placeholder="Priority #3">
+              <button class="primary">Plan next week</button>
+            </form>
+            <small class="hint">These become high-priority Next tasks due next Monday.</small>
+          </div>
+        </div>
+      </section>
+
+      <section id="templates" class="view">
+        <div class="toolbar"><p>Reuse task setups instead of rebuilding the same checklist every time.</p><button id="newTemplate" class="primary">＋ New template</button></div>
+        <div id="templateGrid" class="cards"></div>
+      </section>
+
+      <section id="archive" class="view">
+        <div class="toolbar"><div class="filters"><button class="active" data-archive-filter="archived">Archived</button><button data-archive-filter="trash">Trash</button></div><button id="archiveCompleted">Archive completed</button></div>
+        <div class="panel"><div id="archiveList" class="stack"></div></div>
+      </section>
+
       <section id="analytics" class="view">
         <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Focus minutes</span><b id="aFocus">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
         <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
@@ -156,14 +196,16 @@
         <label>Project<select id="taskProject"><option value="">No project</option></select></label>
         <label>Due date<input id="taskDue" type="date"></label>
         <label>Due time<input id="taskTime" type="time"></label>
-        <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label>
+        <label>Repeat<select id="taskRepeat"><option value="none">None</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="custom_days">Every X days</option><option value="after_completion">X days after completion</option></select></label>
+        <label id="repeatIntervalWrap">Every<input id="taskRepeatInterval" type="number" min="1" max="365" value="1"><small>days</small></label>
+        <label>Repeat until<input id="taskRepeatUntil" type="date"></label>
       </div>
       <div class="subtask-editor">
         <div class="panelhead"><div><small class="caps">CHECKLIST</small><h3>Subtasks</h3></div><span id="subtaskProgress" class="pill">0/0</span></div>
         <div id="subtaskList" class="subtask-list"></div>
         <div class="capture"><input id="newSubtask" type="text" placeholder="Add a checklist item"><button id="addSubtask" type="button">Add</button></div>
       </div>
-      <div class="modalactions"><button id="deleteTask" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
+      <div class="modalactions task-modal-actions"><button id="deleteTask" type="button" class="dangerbtn hidden">Trash</button><button id="archiveTask" type="button" class="hidden">Archive</button><button id="saveTemplateFromTask" type="button">Save template</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
     </form>
   </dialog>
 
@@ -174,6 +216,22 @@
       <div id="quickPreview" class="quick-preview"></div>
       <small class="hint">Try: tomorrow · next Monday · #project · !high · daily · weekly</small>
       <div class="modalactions"><span></span><span></span><button type="button" data-close="quickModal">Cancel</button><button class="primary">Add task</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="templateModal">
+    <form id="templateForm" class="modal">
+      <div class="modalhead"><div><small class="caps">TEMPLATE</small><h2 id="templateHeading">New template</h2></div><button type="button" data-close="templateModal" class="icon">×</button></div>
+      <input id="templateId" type="hidden">
+      <label>Template name<input id="templateName" required maxlength="80"></label>
+      <label>Task title<input id="templateTitle" required maxlength="140"></label>
+      <label>Description<textarea id="templateDescription" rows="3"></textarea></label>
+      <div class="formgrid">
+        <label>Priority<select id="templatePriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label>
+        <label>Project<select id="templateProject"><option value="">No project</option></select></label>
+      </div>
+      <label>Checklist <textarea id="templateChecklist" rows="5" placeholder="One checklist item per line"></textarea></label>
+      <div class="modalactions"><button id="deleteTemplate" type="button" class="dangerbtn hidden">Delete</button><span></span><button type="button" data-close="templateModal">Cancel</button><button class="primary">Save template</button></div>
     </form>
   </dialog>
 
@@ -204,7 +262,7 @@
     </div>
   </dialog>
 
-  <div id="toast"></div>
+  <div id="toast"><span id="toastText"></span><button id="toastAction" class="hidden" type="button"></button></div>
   <script src="/app.js" defer></script>
 </body>
 </html>
