@@ -97,7 +97,7 @@ button,.button,input,select,textarea{-webkit-tap-highlight-color:transparent}
 
 /* Consolidated phone layout */
 @media(max-width:760px){
-#shutdown>.view-tabs,#review>.view-tabs,#analytics>.view-tabs,#history>.view-tabs{grid-template-columns:repeat(4,1fr)}.history-row{grid-template-columns:auto 1fr}.history-row time{grid-column:2;white-space:normal}.history-toolbar .filters{width:100%}.history-toolbar select,.history-toolbar input{width:100%}.task-actions button{padding:0 9px}
+#shutdown>.view-tabs,#review>.view-tabs,#analytics>.view-tabs,#history>.view-tabs{grid-template-columns:repeat(4,minmax(0,1fr));min-width:0}#shutdown>.view-tabs button,#review>.view-tabs button,#analytics>.view-tabs button,#history>.view-tabs button{min-width:0;padding-inline:4px;font-size:10px}.history-row{grid-template-columns:auto 1fr}.history-row time{grid-column:2;white-space:normal}.history-toolbar .filters{width:100%}.history-toolbar select,.history-toolbar input{width:100%}.task-actions button{padding:0 9px}
 
 .planner-controls{width:100%;align-items:stretch;flex-direction:column}.planner-view-tabs{width:100%}.planner-week-grid{grid-template-columns:repeat(7,82vw);overflow:visible}.planner-day-grid{grid-template-columns:1fr}.planner-day-large{min-height:320px}.quick-reschedule{grid-column:1/-1}.quick-reschedule .buttons{display:grid;grid-template-columns:repeat(4,1fr)}
 
