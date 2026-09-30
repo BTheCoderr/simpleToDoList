@@ -27,7 +27,7 @@ const SW_CACHE="command-center-v10";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
-var $=function(id){return document.getElementById(id)}, $=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var dialogReturnFocus=new WeakMap();
 function dialogFocusables(dialog){
   return Array.prototype.slice.call(dialog.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[href],[tabindex]:not([tabindex="-1"])')).filter(function(el){return !el.classList.contains("hidden")&&el.offsetParent!==null});
@@ -41,7 +41,7 @@ function openDialog(dialog){
     if(preferred&&typeof preferred.focus==="function")preferred.focus();
   });
 }
-$("dialog").forEach(function(dialog){
+$$("dialog").forEach(function(dialog){
   dialog.addEventListener("close",function(){
     var previous=dialogReturnFocus.get(dialog);dialogReturnFocus.delete(dialog);
     if(previous&&document.contains(previous)&&typeof previous.focus==="function")previous.focus();
