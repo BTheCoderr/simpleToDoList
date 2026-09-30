@@ -1,12 +1,15 @@
 {
-  "release": "personal-os-v5",
-  "version": "5.0.0",
-  "commit": "11d75e71163a8a0bc2f41b89786f5d6c820fa414",
+  "release": "hardening-v6",
+  "version": "6.0.0",
+  "commit": "5c34d3d3db825bb3240a3a4a9aa1726706993132",
+  "schema": 4,
+  "cache": "command-center-v8",
   "features": [
-    "goals",
-    "daily-shutdown",
-    "command-palette",
-    "automatic-snapshots",
-    "share-capture"
+    "regression-ci",
+    "explicit-migrations",
+    "performance",
+    "snapshot-safeguards",
+    "accessibility",
+    "system-health"
   ]
 }
