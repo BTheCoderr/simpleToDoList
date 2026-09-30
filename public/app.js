@@ -23,7 +23,7 @@ import {
 } from "./core.js";
 import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 
-const SW_CACHE="command-center-v11";
+const SW_CACHE="command-center-v12";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
