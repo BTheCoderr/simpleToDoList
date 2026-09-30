@@ -11,7 +11,10 @@
   "background_color":"#0b1020",
   "theme_color":"#0b1020",
   "categories":["productivity","utilities"],
-  "icons":[
-    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  "icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}],
+  "shortcuts":[
+    {"name":"Today","short_name":"Today","url":"/?view=today","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]},
+    {"name":"Quick Add","short_name":"Add","url":"/?quick=1","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]},
+    {"name":"Focus","short_name":"Focus","url":"/?view=focus","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]}
   ]
 }
