@@ -1,5 +1,5 @@
-var DB="command-center-v2",VER=3,STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots"],DATA_STORES=["tasks","projects","notes","habits","activity","templates","goals"];
-var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focusPreset:25,focus:null};
+var APP_VERSION="6.0.0",DB="command-center-v2",VER=4,SW_CACHE="command-center-v8",STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots","meta"],DATA_STORES=["tasks","projects","notes","habits","activity","templates","goals"],MAX_SNAPSHOT_BYTES=4*1024*1024,MAX_SNAPSHOTS=7;
+var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",archiveFilter:"archived",view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),focusPreset:25,focus:null};
 var editingSubtasks=[];
 var focusTimer=null;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -11,16 +11,30 @@ var builtInTemplates=[
   {id:"builtin-errands",name:"Errands Run",title:"Run errands",description:"Quick reusable errands checklist.",priority:"medium",projectId:"",subtasks:["Make list","Plan route","Complete stops","Put receipts away"]}
 ];
 
+var MIGRATIONS={
+  1:["tasks","projects","notes","habits","activity"],
+  2:["templates"],
+  3:["goals","snapshots"],
+  4:["meta"]
+};
+function ensureStore(db,name){if(!db.objectStoreNames.contains(name))db.createObjectStore(name,{keyPath:"id"})}
+function runMigrations(db,tx,oldVersion,newVersion){
+  for(var v=oldVersion+1;v<=newVersion;v++)(MIGRATIONS[v]||[]).forEach(function(name){ensureStore(db,name)});
+  if(db.objectStoreNames.contains("meta"))tx.objectStore("meta").put({id:"schema",version:newVersion,appVersion:APP_VERSION,upgradedAt:new Date().toISOString()});
+}
+
 function uid(p){return p+"-"+Date.now()+"-"+Math.random().toString(36).slice(2,7)}
-function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB,VER);r.onupgradeneeded=function(){STORES.forEach(function(s){if(!r.result.objectStoreNames.contains(s))r.result.createObjectStore(s,{keyPath:"id"})})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}})}
+function openDB(){return new Promise(function(res,rej){var r=indexedDB.open(DB,VER);r.onupgradeneeded=function(e){runMigrations(r.result,r.transaction,e.oldVersion,e.newVersion||VER)};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)};r.onblocked=function(){rej(new Error("Database upgrade blocked by another open Command Center tab"))}})}
 function all(store){return openDB().then(function(db){return new Promise(function(res,rej){var r=db.transaction(store,"readonly").objectStore(store).getAll();r.onsuccess=function(){db.close();res(r.result)};r.onerror=function(){db.close();rej(r.error)}})})}
+function readStores(names){return openDB().then(function(db){return new Promise(function(res,rej){var out={},tx=db.transaction(names,"readonly");names.forEach(function(name){var r=tx.objectStore(name).getAll();r.onsuccess=function(){out[name]=r.result||[]}});tx.oncomplete=function(){db.close();res(out)};tx.onerror=function(){var e=tx.error;db.close();rej(e)};tx.onabort=function(){var e=tx.error||new Error("Read transaction aborted");db.close();rej(e)}})})}
 function save(store,val){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).put(val);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
+function saveMany(store,values){if(!values||!values.length)return Promise.resolve();return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite"),os=tx.objectStore(store);values.forEach(function(v){os.put(v)});tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
 function del(store,id){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).delete(id);tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
 function clear(store){return openDB().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(store,"readwrite");tx.objectStore(store).clear();tx.oncomplete=function(){db.close();res()};tx.onerror=function(){db.close();rej(tx.error)}})})}
-async function seed(){var count=0;for(var s of ["tasks","projects","notes","habits"])count+=(await all(s)).length;if(count)return;for(var k of ["projects","tasks","notes","habits"])for(var x of defaults[k])await save(k,x)}
-async function load(){await seed();state.tasks=(await all("tasks")).map(normalizeTask);state.projects=(await all("projects")).map(function(p){return Object.assign({goalId:""},p)});state.notes=await all("notes");state.habits=await all("habits");state.activity=await all("activity");state.templates=await all("templates");state.goals=await all("goals");state.snapshots=await all("snapshots");render()}
+async function seed(){var data=await readStores(["tasks","projects","notes","habits"]),count=data.tasks.length+data.projects.length+data.notes.length+data.habits.length;if(count)return;for(var k of ["projects","tasks","notes","habits"])await saveMany(k,defaults[k])}
+async function load(){await seed();var data=await readStores(STORES);state.tasks=(data.tasks||[]).map(normalizeTask);state._active=state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt});state.projects=(data.projects||[]).map(function(p){return Object.assign({goalId:""},p)});state.notes=data.notes||[];state.habits=data.habits||[];state.activity=data.activity||[];state.templates=data.templates||[];state.goals=data.goals||[];state.snapshots=data.snapshots||[];render()}
 function normalizeTask(t){return Object.assign({description:"",status:"inbox",priority:"medium",projectId:"",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null},t,{subtasks:Array.isArray(t.subtasks)?t.subtasks:[]})}
-function activeTasks(){return state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt})}
+function activeTasks(){return state._active||[]}
 function visibleTasks(){return activeTasks()}
 function esc(v){return String(v||"").replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]})}
 function today(){var d=new Date();return dateKey(d)}
@@ -35,12 +49,12 @@ function subtaskStats(t){var a=t.subtasks||[],done=a.filter(function(x){return x
 function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
-  $$(".nav,.bottom button").forEach(function(b){b.classList.toggle("active",b.dataset.view===state.view)});
+  $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===state.view;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
   if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Shutdown",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Analytics",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
-  $("sidebar").classList.remove("open");
+  $("sidebar").classList.remove("open");if(state.view==="settings")setTimeout(refreshSystemInfo,0);
 }
 
 function taskHTML(t){
@@ -126,6 +140,7 @@ async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id
 
 
 function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
+function addMonthsClamped(d,n){var x=new Date(d),day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+n);var last=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(day,last));return x}
 function nextWeekday(d){var x=addDays(d,1);while(x.getDay()===0||x.getDay()===6)x=addDays(x,1);return x}
 function nextOccurrence(t){
   if(!t.repeat||t.repeat==="none")return "";
@@ -134,7 +149,7 @@ function nextOccurrence(t){
   if(t.repeat==="daily")next=addDays(base,1);
   else if(t.repeat==="weekdays")next=nextWeekday(base);
   else if(t.repeat==="weekly")next=addDays(base,7);
-  else if(t.repeat==="monthly"){next=new Date(base);next.setMonth(next.getMonth()+1)}
+  else if(t.repeat==="monthly")next=addMonthsClamped(base,1)
   else if(t.repeat==="custom_days"||t.repeat==="after_completion")next=addDays(base,n);
   else return "";
   var key=dateKey(next);
@@ -215,8 +230,8 @@ function startFocus(){
 function pauseFocus(){if(!state.focus.running)return;state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000));state.focus.running=false;state.focus.endAt=null;persistFocus();clearInterval(focusTimer);focusTimer=null;renderFocus()}
 function resetFocus(){clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;state.focus.remaining=state.focus.minutes*60;persistFocus();renderFocus()}
 
-async function exportAll(){var data={version:5,exportedAt:new Date().toISOString()};for(var s of DATA_STORES)data[s]=await all(s);var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
-async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;await createSnapshot("Before JSON import");for(var s of DATA_STORES){await clear(s);for(var x of data[s]||[])await save(s,x)}await load();toast("Backup restored")}catch(e){alert("Could not import that JSON backup.")}}
+async function exportAll(){var stores=await readStores(DATA_STORES),data=Object.assign({version:6,exportedAt:new Date().toISOString()},stores),blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="command-center-"+today()+".json";a.click();URL.revokeObjectURL(url)}
+async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;var guard=await createSnapshot("Before JSON import");if(!guard&&!confirm("A recovery snapshot could not be created. Continue with import anyway?"))return;for(var s of DATA_STORES){await clear(s);await saveMany(s,data[s]||[])}await load();toast("Backup restored")}catch(e){console.error(e);alert("Could not import that JSON backup.")}}
 function search(q){var box=$("searchBox");q=q.trim().toLowerCase();if(!q){box.classList.add("hidden");return}var r=[];activeTasks().filter(function(x){return(x.title+" "+x.description+" "+(x.subtasks||[]).map(function(s){return s.title}).join(" ")).toLowerCase().includes(q)}).forEach(function(x){r.push(["task",x.id,x.title,x.status])});state.projects.filter(function(x){return(x.name+" "+x.area).toLowerCase().includes(q)}).forEach(function(x){r.push(["projects","",x.name,x.area||"Project"])});state.notes.filter(function(x){return(x.title+" "+x.body).toLowerCase().includes(q)}).forEach(function(x){r.push(["note",x.id,x.title,"Note"])});state.goals.filter(function(x){return(x.name+" "+(x.why||"")).toLowerCase().includes(q)}).forEach(function(x){r.push(["goal",x.id,x.name,"Goal"])});box.innerHTML=r.slice(0,10).map(function(x){return'<div class="searchitem" data-search="'+x[0]+':'+x[1]+'"><b>'+esc(x[2])+'</b><small>'+esc(x[3])+'</small></div>'}).join("")||'<div class="empty">No matches.</div>';box.classList.remove("hidden")}
 function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}
 
@@ -246,24 +261,28 @@ async function deleteGoalById(id){
 }
 
 async function captureState(){
-  var data={version:5,createdAt:new Date().toISOString()};for(var s of DATA_STORES)data[s]=await all(s);return data;
+  var stores=await readStores(DATA_STORES);return Object.assign({version:6,createdAt:new Date().toISOString()},stores);
 }
+function dataSizeBytes(value){try{return new Blob([JSON.stringify(value)]).size}catch(e){return JSON.stringify(value).length*2}}
 async function createSnapshot(reason){
   try{
-    var shot={id:uid("snap"),createdAt:new Date().toISOString(),reason:reason||"Manual snapshot",data:await captureState()};await save("snapshots",shot);
+    var data=await captureState(),bytes=dataSizeBytes(data);
+    if(bytes>MAX_SNAPSHOT_BYTES){console.warn("Snapshot skipped: workspace exceeds local snapshot limit",bytes);toast("Snapshot skipped — export JSON for this large workspace");return null}
+    var shot={id:uid("snap"),createdAt:new Date().toISOString(),reason:reason||"Manual snapshot",bytes:bytes,data:data};await save("snapshots",shot);
     var shots=(await all("snapshots")).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
-    for(var old of shots.slice(7))await del("snapshots",old.id);
+    for(var old of shots.slice(MAX_SNAPSHOTS))await del("snapshots",old.id);
     state.snapshots=await all("snapshots");renderSnapshots();return shot;
-  }catch(e){console.error("Snapshot failed",e);return null}
+  }catch(e){console.error("Snapshot failed",e);toast("Could not create recovery snapshot");return null}
 }
+function formatBytes(n){n=Number(n)||0;if(n<1024)return n+" B";if(n<1024*1024)return (n/1024).toFixed(1)+" KB";return (n/(1024*1024)).toFixed(1)+" MB"}
 function renderSnapshots(){
-  if(!$("snapshotList"))return;var shots=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,7);
-  $("snapshotList").innerHTML=shots.length?shots.map(function(s){return '<div class="snapshot-row"><div><b>'+esc(s.reason||"Snapshot")+'</b><small>'+new Date(s.createdAt).toLocaleString()+'</small></div><div class="buttons compact"><button data-restore-snapshot="'+s.id+'">Restore</button><button data-delete-snapshot="'+s.id+'">×</button></div></div>'}).join(""):'<small class="hint">No snapshots yet.</small>';
+  if(!$("snapshotList"))return;var shots=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,MAX_SNAPSHOTS);
+  $("snapshotList").innerHTML=shots.length?shots.map(function(s){return '<div class="snapshot-row"><div><b>'+esc(s.reason||"Snapshot")+'</b><small>'+new Date(s.createdAt).toLocaleString()+(s.bytes?" · "+formatBytes(s.bytes):"")+'</small></div><div class="buttons compact"><button data-restore-snapshot="'+s.id+'">Restore</button><button aria-label="Delete snapshot" data-delete-snapshot="'+s.id+'">×</button></div></div>'}).join(""):'<small class="hint">No snapshots yet.</small>';
 }
 async function restoreSnapshot(id){
   var shot=state.snapshots.find(function(s){return s.id===id});if(!shot||!confirm("Restore this snapshot? Current data will be replaced."))return;
-  await createSnapshot("Before snapshot restore");
-  for(var s of DATA_STORES){await clear(s);for(var x of (shot.data[s]||[]))await save(s,x)}
+  var guard=await createSnapshot("Before snapshot restore");if(!guard&&!confirm("A recovery snapshot could not be created. Continue anyway?"))return;
+  for(var s of DATA_STORES){await clear(s);await saveMany(s,shot.data[s]||[])}
   await load();toast("Snapshot restored");
 }
 async function ensureDailySnapshot(){
@@ -280,9 +299,9 @@ function renderShutdown(){
 }
 async function completeShutdown(e){
   e.preventDefault();await createSnapshot("Before daily shutdown");var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);var due=dateKey(tomorrow);
-  if($("shutdownRoll").checked){for(var t of activeTasks().filter(function(x){return x.status!=="done"&&x.dueDate===today()})){t.dueDate=due;await save("tasks",t)}}
+  if($("shutdownRoll").checked){var rolled=activeTasks().filter(function(x){return x.status!=="done"&&x.dueDate===today()}).map(function(t){t.dueDate=due;return t});await saveMany("tasks",rolled)}
   var vals=[$("shutdown1").value,$("shutdown2").value,$("shutdown3").value].map(function(x){return x.trim()}).filter(Boolean);
-  for(var i=0;i<vals.length;i++)await save("tasks",{id:uid("t"),title:vals[i],description:"",status:"next",priority:i===0?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null});
+  var planned=vals.map(function(title,i){return {id:uid("t"),title:title,description:"",status:"next",priority:i===0?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
   var reflection=$("shutdownReflection").value.trim();if(reflection)await save("notes",{id:uid("n"),title:"Daily shutdown — "+today(),body:reflection,pinned:false,updatedAt:new Date().toISOString()});
   await log("shutdown.completed","Daily shutdown",{planned:vals.length,rolled:$("shutdownRoll").checked});$("shutdownForm").reset();$("shutdownRoll").checked=true;await load();await createSnapshot("Daily shutdown complete");toast("Day closed. Tomorrow is planned.");
 }
@@ -346,7 +365,7 @@ function renderWeeklyReview(){
 function nextMondayKey(){var d=new Date(),delta=(8-d.getDay())%7;if(delta===0)delta=7;d.setDate(d.getDate()+delta);return dateKey(d)}
 async function planNextWeek(e){
   e.preventDefault();var vals=[$("weekly1").value,$("weekly2").value,$("weekly3").value].map(function(x){return x.trim()}).filter(Boolean);if(!vals.length){toast("Add at least one priority");return}
-  var due=nextMondayKey();for(var title of vals)await save("tasks",{id:uid("t"),title:title,description:"",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null});
+  var due=nextMondayKey(),planned=vals.map(function(title){return {id:uid("t"),title:title,description:"",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
   await log("review.planned","Weekly top priorities",{count:vals.length,dueDate:due});$("weeklyPlanForm").reset();await load();toast("Next week planned");
 }
 function templateCard(t,builtin){return '<article class="card template-card"><small class="caps">'+(builtin?"STARTER TEMPLATE":"YOUR TEMPLATE")+'</small><h3>'+esc(t.name)+'</h3><p>'+esc(t.description||t.title)+'</p><div class="meta"><span class="pill '+(t.priority||"medium")+'">'+esc(t.priority||"medium")+'</span><span class="pill">'+(t.subtasks||[]).length+' checklist</span></div><footer><div class="row"><button data-template-use="'+t.id+'" data-template-builtin="'+(builtin?"1":"0")+'" class="primary">Use template</button>'+(builtin?"":'<button data-template-edit="'+t.id+'">Edit</button>')+'</div></footer></article>'}
@@ -387,6 +406,28 @@ async function archiveTaskById(id){
 }
 async function restoreTask(id){var t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.deletedAt=null;t.archivedAt=null;await save("tasks",t);await load();toast("Task restored")}
 async function archiveCompleted(){var items=activeTasks().filter(function(t){return t.status==="done"});for(var t of items){t.archivedAt=new Date().toISOString();await save("tasks",t)}await load();toast(items.length?items.length+" completed tasks archived":"Nothing to archive")}
+
+
+async function refreshSystemInfo(){
+  var box=$("systemInfo");if(!box)return;
+  try{
+    var meta=(await all("meta")).find(function(x){return x.id==="schema"})||{},estimate={};
+    if(navigator.storage&&navigator.storage.estimate)estimate=await navigator.storage.estimate();
+    var reg=("serviceWorker" in navigator)?await navigator.serviceWorker.getRegistration():null;
+    var usage=estimate.usage!=null?formatBytes(estimate.usage):"Unavailable",quota=estimate.quota!=null?formatBytes(estimate.quota):"Unavailable";
+    var rows=[
+      ["App version","v"+APP_VERSION],
+      ["Database schema","v"+(meta.version||VER)],
+      ["Offline cache",SW_CACHE],
+      ["Service worker",reg&&reg.active?"Active":"Not active yet"],
+      ["Open tasks",String(activeTasks().filter(function(t){return t.status!=="done"}).length)],
+      ["Projects / Goals",state.projects.length+" / "+state.goals.length],
+      ["Recovery snapshots",state.snapshots.length+" / "+MAX_SNAPSHOTS],
+      ["Browser storage",usage+" of "+quota]
+    ];
+    box.innerHTML=rows.map(function(r){return '<div class="system-row"><span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b></div>'}).join("");
+  }catch(e){box.innerHTML='<div class="diag-row warn"><b>System info unavailable</b><small>'+esc(e.message||"Unknown error")+'</small></div>'}
+}
 
 var onboardingStep=0;
 var onboardingSlides=[
@@ -455,7 +496,7 @@ document.addEventListener("click",async function(e){
   if(b.dataset.templateEdit)openTemplate(state.templates.find(function(x){return x.id===b.dataset.templateEdit}));
   if(b.dataset.archiveFilter){state.archiveFilter=b.dataset.archiveFilter;renderArchive()}
   if(b.dataset.restoreTask)await restoreTask(b.dataset.restoreTask);
-  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){await createSnapshot("Before permanent delete");await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}
+  if(b.dataset.purgeTask&&confirm("Delete this task forever? This cannot be undone.")){var purgeGuard=await createSnapshot("Before permanent delete");if(purgeGuard||confirm("Recovery snapshot failed. Delete forever anyway?")){await del("tasks",b.dataset.purgeTask);await load();toast("Permanently deleted")}}
   if(b.dataset.editGoal)openGoal(state.goals.find(function(g){return g.id===b.dataset.editGoal}));
   if(b.dataset.goalProject){openSimple("project");$("simpleGoal").value=b.dataset.goalProject}
   if(b.dataset.restoreSnapshot)await restoreSnapshot(b.dataset.restoreSnapshot);
@@ -519,9 +560,9 @@ $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();
 $("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}await setTaskStatus(t,"done");pauseFocus();await load();toast("Task completed")};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
-$("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;await createSnapshot("Before workspace reset");for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
+$("reset").onclick=async function(){if(!confirm("Reset all local data? A recovery snapshot will be kept."))return;var guard=await createSnapshot("Before workspace reset");if(!guard&&!confirm("Recovery snapshot failed. Reset anyway?"))return;for(var s of DATA_STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset","Restore",async function(){var latest=state.snapshots.slice().sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];if(latest)await restoreSnapshot(latest.id)})};
 $("replayTour").onclick=function(){openOnboarding(true)};
-$("runDiagnostics").onclick=runDiagnostics;
+$("runDiagnostics").onclick=runDiagnostics;$("refreshSystemInfo").onclick=refreshSystemInfo;
 $("onboardingSkip").onclick=finishOnboarding;
 $("onboardingBack").onclick=function(){if(onboardingStep>0){onboardingStep--;renderOnboarding()}};
 $("onboardingNext").onclick=function(){if(onboardingStep<onboardingSlides.length-1){onboardingStep++;renderOnboarding()}else finishOnboarding()};
