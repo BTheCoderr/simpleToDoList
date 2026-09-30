@@ -148,7 +148,7 @@
       </section>
 
       <section id="shutdown" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown" class="active">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown" class="active">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history">History</button></div>
         <div class="shutdown-hero panel">
           <small class="caps">END THE DAY ON PURPOSE</small>
           <h2>Daily Shutdown</h2>
@@ -177,7 +177,7 @@
       </section>
 
       <section id="review" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review" class="active">Weekly</button><button data-view="analytics">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review" class="active">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history">History</button></div>
         <div class="review-hero panel">
           <small class="caps">WEEKLY RESET</small>
           <h2>Review the week. Choose the next one.</h2>
@@ -215,15 +215,30 @@
       </section>
 
       <section id="analytics" class="view">
-        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics" class="active">Analytics</button></div>
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics" class="active">Analytics</button><button data-view="history">History</button></div>
         <div class="metrics"><article><span>Completion</span><b id="aRate">0%</b></article><article><span>Completed</span><b id="aDone">0</b></article><article><span>Open</span><b id="aOpen">0</b></article><article><span>Focus minutes</span><b id="aFocus">0</b></article><article><span>Habit check-ins</span><b id="aHabits">0</b></article></div>
         <div class="grid"><div class="panel"><h3>By priority</h3><div id="priorityBars"></div></div><div class="panel"><h3>By status</h3><div id="statusBars"></div></div></div>
+      </section>
+
+      <section id="history" class="view">
+        <div class="view-tabs" aria-label="Review views"><button data-view="shutdown">Daily</button><button data-view="review">Weekly</button><button data-view="analytics">Analytics</button><button data-view="history" class="active">History</button></div>
+        <div class="toolbar history-toolbar">
+          <div><p>See what changed across tasks, focus sessions, reviews, templates, shares, and planning.</p></div>
+          <div class="filters history-filters">
+            <input id="historySearch" aria-label="Search history" placeholder="Search history">
+            <select id="historyType" aria-label="Filter history by type"><option value="">All activity</option><option value="task">Tasks</option><option value="focus">Focus</option><option value="review">Review</option><option value="other">Other</option></select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panelhead"><div><small class="caps">LOCAL ACTIVITY</small><h3>Timeline</h3></div><span id="historyCount" class="pill">0</span></div>
+          <div id="historyList" class="history-list" aria-live="polite"></div>
+        </div>
       </section>
 
       <section id="settings" class="view">
         <div class="settings">
           <div class="panel"><h3>Appearance</h3><p>Theme is saved only on this device.</p><div class="buttons"><button id="light">Light</button><button id="dark">Dark</button></div></div>
-          <div class="panel"><h3>Backup & restore</h3><p>Export everything as one portable JSON file.</p><div class="buttons"><button id="export">Export JSON</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
+          <div class="panel"><h3>Backup & export</h3><p>JSON is the full portable backup. CSV and Markdown are human-friendly copies for spreadsheets, notes, or archives.</p><div class="buttons"><button id="export">Export JSON</button><button id="exportCsv">Tasks CSV</button><button id="exportMarkdown">Workspace Markdown</button><label class="button">Import JSON<input id="import" type="file" accept="application/json"></label></div></div>
           <div class="panel"><h3>Automatic snapshots</h3><p>Command Center keeps rotating local recovery points before risky changes and once per day.</p><div class="buttons"><button id="createSnapshot">Create snapshot now</button></div><div id="snapshotList" class="snapshot-list" aria-live="polite"></div></div>
           <div class="panel danger"><h3>Reset workspace</h3><p>Clear local data and restore starter items.</p><button id="reset">Reset local data</button></div>
           <div class="panel"><h3>Install app</h3><p id="installCopy">Add Command Center to your Home Screen for a standalone app experience.</p><div class="buttons"><button id="installApp">Install Command Center</button></div><small id="iosInstall" class="installhint hidden">On iPhone: tap Share in Safari, then “Add to Home Screen.”</small></div>
@@ -272,6 +287,10 @@
         <div class="panelhead"><div><small class="caps">CHECKLIST</small><h3>Subtasks</h3></div><span id="subtaskProgress" class="pill">0/0</span></div>
         <div id="subtaskList" class="subtask-list"></div>
         <div class="capture"><input id="newSubtask" type="text" placeholder="Add a checklist item"><button id="addSubtask" type="button">Add</button></div>
+      </div>
+      <div id="taskHistoryWrap" class="task-history hidden">
+        <div class="panelhead"><div><small class="caps">HISTORY</small><h3>Recent changes</h3></div></div>
+        <div id="taskHistoryList" class="history-list compact-history"></div>
       </div>
       <div class="modalactions task-modal-actions"><button id="deleteTask" type="button" class="dangerbtn hidden">Trash</button><button id="archiveTask" type="button" class="hidden">Archive</button><button id="saveTemplateFromTask" type="button">Save template</button><span></span><button type="button" data-close="taskModal">Cancel</button><button class="primary">Save task</button></div>
     </form>
