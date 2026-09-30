@@ -36,7 +36,7 @@ function nav(){
 
 function taskHTML(t){
   var p=pname(t.projectId),st=subtaskStats(t),sub=st.total?'<span class="pill">'+st.done+'/'+st.total+' checklist</span>':"";
-  return '<div class="task '+(t.status==="done"?"done":"")+'"><button class="checkbtn" data-toggle="'+t.id+'">'+(t.status==="done"?"✓":"")+'</button><div class="taskmain" data-edit-task="'+t.id+'"><div class="tasktitle">'+esc(t.title)+'</div><div class="meta"><span class="pill '+t.priority+'">'+esc(t.priority)+'</span><span class="pill">'+esc(t.status)+'</span>'+(p?'<span class="pill">'+esc(p)+'</span>':"")+(t.dueDate?'<span class="pill '+(overdue(t)?"high":"")+'">'+(overdue(t)?"Overdue · ":"")+fmt(t.dueDate,t.dueTime)+'</span>':"")+(t.repeat!=="none"?'<span class="pill">↻ '+esc(t.repeat)+'</span>':"")+sub+'</div></div><button class="dots" data-edit-task="'+t.id+'">•••</button></div>'
+  return '<div class="task-row" data-task-row="'+t.id+'"><div class="task-actions"><button class="swipe-edit" data-swipe-edit="'+t.id+'">Edit</button><button class="swipe-done" data-swipe-complete="'+t.id+'">'+(t.status==="done"?"Undo":"Done")+'</button><button class="swipe-delete" data-swipe-delete="'+t.id+'">Delete</button></div><div class="task '+(t.status==="done"?"done":"")+'"><button class="checkbtn" data-toggle="'+t.id+'">'+(t.status==="done"?"✓":"")+'</button><div class="taskmain" data-edit-task="'+t.id+'"><div class="tasktitle">'+esc(t.title)+'</div><div class="meta"><span class="pill '+t.priority+'">'+esc(t.priority)+'</span><span class="pill">'+esc(t.status)+'</span>'+(p?'<span class="pill">'+esc(p)+'</span>':"")+(t.dueDate?'<span class="pill '+(overdue(t)?"high":"")+'">'+(overdue(t)?"Overdue · ":"")+fmt(t.dueDate,t.dueTime)+'</span>':"")+(t.repeat!=="none"?'<span class="pill">↻ '+esc(t.repeat)+'</span>':"")+sub+'</div></div><button class="dots" data-edit-task="'+t.id+'">•••</button></div></div>'
 }
 function renderTasks(){
   var open=state.tasks.filter(function(t){return t.status!=="done"}).length;$("openCount").textContent=open;
@@ -66,7 +66,7 @@ function renderCalendar(){
   $("calendarTitle").textContent=first.toLocaleDateString(undefined,{month:"long",year:"numeric"});
   var html="";
   for(var i=0;i<42;i++){var d=new Date(start);d.setDate(start.getDate()+i);var key=dateKey(d),items=state.tasks.filter(function(t){return t.dueDate===key}),muted=d.getMonth()!==m;
-    html+='<div class="cal-day '+(muted?"outside ":"")+(key===today()?"today ":"")+'"><div class="cal-date"><b>'+d.getDate()+'</b><button data-date-add="'+key+'" aria-label="Add task on '+key+'">＋</button></div><div class="cal-tasks">'+items.slice(0,4).map(function(t){return'<button class="cal-task '+t.priority+'" data-edit-task="'+t.id+'">'+(t.dueTime?'<span>'+esc(t.dueTime)+'</span> ':"")+esc(t.title)+'</button>'}).join("")+(items.length>4?'<small>+'+(items.length-4)+' more</small>':"")+'</div></div>';
+    html+='<div class="cal-day '+(muted?"outside ":"")+(key===today()?"today ":"")+'" data-date-add="'+key+'"><div class="cal-date"><b>'+d.getDate()+'</b><button data-date-add="'+key+'" aria-label="Add task on '+key+'">＋</button></div><div class="cal-tasks">'+items.slice(0,4).map(function(t){return'<button class="cal-task '+t.priority+'" data-edit-task="'+t.id+'">'+(t.dueTime?'<span>'+esc(t.dueTime)+'</span> ':"")+esc(t.title)+'</button>'}).join("")+(items.length>4?'<small>+'+(items.length-4)+' more</small>':"")+'</div></div>';
   }
   $("calendarGrid").innerHTML=html;
   var uns=state.tasks.filter(function(t){return t.status!=="done"&&!t.dueDate}).slice(0,10);
@@ -179,10 +179,55 @@ async function exportAll(){var data={version:3,exportedAt:new Date().toISOString
 async function importAll(file){if(!file)return;try{var data=JSON.parse(await file.text());if(!confirm("Replace all local data with this backup?"))return;for(var s of STORES){await clear(s);for(var x of data[s]||[])await save(s,x)}await load();toast("Backup restored")}catch(e){alert("Could not import that JSON backup.")}}
 function search(q){var box=$("searchBox");q=q.trim().toLowerCase();if(!q){box.classList.add("hidden");return}var r=[];state.tasks.filter(function(x){return(x.title+" "+x.description+" "+(x.subtasks||[]).map(function(s){return s.title}).join(" ")).toLowerCase().includes(q)}).forEach(function(x){r.push(["task",x.id,x.title,x.status])});state.projects.filter(function(x){return(x.name+" "+x.area).toLowerCase().includes(q)}).forEach(function(x){r.push(["projects","",x.name,x.area||"Project"])});state.notes.filter(function(x){return(x.title+" "+x.body).toLowerCase().includes(q)}).forEach(function(x){r.push(["note",x.id,x.title,"Note"])});box.innerHTML=r.slice(0,10).map(function(x){return'<div class="searchitem" data-search="'+x[0]+':'+x[1]+'"><b>'+esc(x[2])+'</b><small>'+esc(x[3])+'</small></div>'}).join("")||'<div class="empty">No matches.</div>';box.classList.remove("hidden")}
 function theme(){var t=localStorage.getItem("cc-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.dataset.theme=t}
+
+var onboardingStep=0;
+var onboardingSlides=[
+  {icon:"⌂",eyebrow:"WELCOME",title:"Your day, without the noise.",body:"Today surfaces what matters now. Everything stays private on this device — no account and no cloud database required.",action:"See Quick Add"},
+  {icon:"＋",eyebrow:"CAPTURE FAST",title:"Type it like you think it.",body:"Try “Call Josh tomorrow 3pm #work !high.” Command Center pulls out the date, time, priority and project locally.",action:"See Planner"},
+  {icon:"▣",eyebrow:"PLAN + MOVE",title:"See the month. Move the work.",body:"Planner puts deadlines on a calendar. Board lets you move tasks from Inbox → Next → Doing → Done.",action:"See Focus"},
+  {icon:"◉",eyebrow:"FOCUS",title:"One task. One timer.",body:"Choose a task, start 25 / 50 / 90 minutes, and let everything else wait. Export JSON backups anytime from Settings.",action:"Start using Command Center"}
+];
+function renderOnboarding(){
+  var s=onboardingSlides[onboardingStep];
+  $("onboardingProgress").style.width=((onboardingStep+1)/onboardingSlides.length*100)+"%";
+  $("onboardingSlide").innerHTML='<div class="tour-icon">'+s.icon+'</div><small class="caps">'+s.eyebrow+'</small><h2>'+s.title+'</h2><p>'+s.body+'</p>';
+  $("onboardingBack").disabled=onboardingStep===0;
+  $("onboardingNext").textContent=s.action;
+}
+function openOnboarding(force){
+  if(!force&&localStorage.getItem("cc-onboarded-v1")==="1")return;
+  onboardingStep=0;renderOnboarding();
+  if(!$("onboardingModal").open)$("onboardingModal").showModal();
+}
+function finishOnboarding(){
+  localStorage.setItem("cc-onboarded-v1","1");
+  if($("onboardingModal").open)$("onboardingModal").close();
+  state.view="today";nav();toast("Command Center is ready");
+}
+function closeSwipeRows(except){
+  $(".task-row.reveal").forEach(function(row){if(row!==except)row.classList.remove("reveal")});
+}
+async function deleteTaskById(id){
+  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;
+  if(!confirm('Delete "'+t.title+'"?'))return;
+  await del("tasks",id);await log("task.deleted",t.title);await load();toast("Task deleted");
+}
+async function runDiagnostics(){
+  var box=$("diagnosticResults");box.innerHTML='<div class="diag-row"><span>Running checks…</span></div>';
+  var checks=[];
+  try{localStorage.setItem("cc-diag","ok");var ok=localStorage.getItem("cc-diag")==="ok";localStorage.removeItem("cc-diag");checks.push(["Local preferences",ok,"Theme and app preferences can persist."])}catch(e){checks.push(["Local preferences",false,e.message])}
+  try{var db=await openDB();var stores=STORES.every(function(s){return db.objectStoreNames.contains(s)});db.close();checks.push(["IndexedDB",stores,stores?"All local data stores are available.":"One or more stores are missing."])}catch(e){checks.push(["IndexedDB",false,e.message])}
+  try{var reg=("serviceWorker" in navigator)?await navigator.serviceWorker.getRegistration():null;checks.push(["Offline worker",!!reg,reg?"Offline app shell is registered.":"Refresh once while online to register offline support."])}catch(e){checks.push(["Offline worker",false,e.message])}
+  var standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+  checks.push(["Install mode",true,standalone?"Running from Home Screen / standalone.":"Running in browser; install from Settings when ready."]);
+  checks.push(["Connection",true,navigator.onLine?"Online now. Local data still works offline.":"Offline now. Local data remains available."]);
+  box.innerHTML=checks.map(function(c){return'<div class="diag-row '+(c[1]?"pass":"warn")+'"><b>'+(c[1]?"✓":"! ")+' '+esc(c[0])+'</b><small>'+esc(c[2])+'</small></div>'}).join("");
+  toast(checks.every(function(c){return c[1]})?"App check passed":"App check finished");
+}
 function render(){nav();renderTasks();renderToday();renderCalendar();renderBoard();renderProjects();renderNotes();renderHabits();renderAnalytics();renderFocus();theme()}
 
 document.addEventListener("click",async function(e){
-  var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task]");if(!b)return;
+  var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task],[data-date-add]");if(!b)return;
   if(b.dataset.view){state.view=b.dataset.view;nav();window.scrollTo(0,0);if(state.view==="focus")renderFocus()}
   if(b.dataset.add==="task")openTask();if(b.dataset.add==="project")openSimple("project");if(b.dataset.add==="note")openSimple("note");if(b.dataset.add==="habit")openSimple("habit");
   if(b.dataset.close)$(b.dataset.close).close();
@@ -199,6 +244,25 @@ document.addEventListener("click",async function(e){
   if(b.dataset.minutes){state.focus.minutes=Number(b.dataset.minutes);state.focus.remaining=state.focus.minutes*60;state.focus.running=false;state.focus.endAt=null;persistFocus();renderFocus()}
   if(b.dataset.subtaskToggle){var s=editingSubtasks.find(function(x){return x.id===b.dataset.subtaskToggle});if(s){s.done=!s.done;renderSubtasks()}}
   if(b.dataset.subtaskDelete){editingSubtasks=editingSubtasks.filter(function(x){return x.id!==b.dataset.subtaskDelete});renderSubtasks()}
+  if(b.dataset.swipeEdit){closeSwipeRows();openTask(state.tasks.find(function(x){return x.id===b.dataset.swipeEdit}))}
+  if(b.dataset.swipeComplete){closeSwipeRows();await toggleTask(b.dataset.swipeComplete);toast("Task updated")}
+  if(b.dataset.swipeDelete){closeSwipeRows();await deleteTaskById(b.dataset.swipeDelete)}
+});
+var swipeStart=null;
+document.addEventListener("touchstart",function(e){
+  var row=e.target.closest&&e.target.closest("[data-task-row]");if(!row||e.target.closest("button"))return;
+  var t=e.changedTouches[0];swipeStart={row:row,x:t.clientX,y:t.clientY};
+},{passive:true});
+document.addEventListener("touchend",function(e){
+  if(!swipeStart)return;
+  var t=e.changedTouches[0],dx=t.clientX-swipeStart.x,dy=t.clientY-swipeStart.y,row=swipeStart.row;
+  swipeStart=null;
+  if(Math.abs(dx)<45||Math.abs(dx)<Math.abs(dy)*1.25)return;
+  if(dx<0){closeSwipeRows(row);row.classList.add("reveal")}
+  else{row.classList.remove("reveal")}
+},{passive:true});
+document.addEventListener("click",function(e){
+  if(!e.target.closest(".task-row")&&!e.target.closest(".task-actions"))closeSwipeRows();
 });
 document.addEventListener("dragstart",function(e){var card=e.target.closest("[data-drag-task]");if(card)e.dataTransfer.setData("text/plain",card.dataset.dragTask)});
 $$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function(e){e.preventDefault();col.classList.add("dragover")});col.addEventListener("dragleave",function(){col.classList.remove("dragover")});col.addEventListener("drop",async function(e){e.preventDefault();col.classList.remove("dragover");var id=e.dataTransfer.getData("text/plain"),t=state.tasks.find(function(x){return x.id===id});if(!t)return;t.status=col.dataset.dropStatus;t.completedAt=t.status==="done"?new Date().toISOString():null;await save("tasks",t);await load();toast("Moved to "+t.status)})});
@@ -225,6 +289,11 @@ $("focusComplete").onclick=async function(){var t=state.tasks.find(function(x){r
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;$("import").onchange=function(e){importAll(e.target.files[0]);e.target.value=""};
 $("reset").onclick=async function(){if(!confirm("Reset all local data? Export a backup first if you want to keep it."))return;for(var s of STORES)await clear(s);localStorage.removeItem("cc-focus");loadFocus();await load();toast("Workspace reset")};
+$("replayTour").onclick=function(){openOnboarding(true)};
+$("runDiagnostics").onclick=runDiagnostics;
+$("onboardingSkip").onclick=finishOnboarding;
+$("onboardingBack").onclick=function(){if(onboardingStep>0){onboardingStep--;renderOnboarding()}};
+$("onboardingNext").onclick=function(){if(onboardingStep<onboardingSlides.length-1){onboardingStep++;renderOnboarding()}else finishOnboarding()};
 
 document.addEventListener("keydown",function(e){if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search").focus()}if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();openQuick()}if(e.key.toLowerCase()==="q"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)){openQuick()}});
 
@@ -236,5 +305,8 @@ $("installApp").onclick=async function(){if(deferredInstall){deferredInstall.pro
 
 loadFocus();
 var params=new URLSearchParams(location.search);if(params.get("view"))state.view=params.get("view");if(params.get("quick")==="1")setTimeout(function(){openQuick()},300);
-theme();installState();load().then(function(){if(state.focus.running){clearInterval(focusTimer);focusTimer=setInterval(tickFocus,1000)}}).catch(function(e){console.error(e);document.body.innerHTML="<main style='padding:40px;font-family:system-ui'><h1>Command Center could not start.</h1><p>Refresh the page. Your local data was not intentionally deleted.</p></main>"});
+theme();installState();load().then(function(){
+  if(state.focus.running){clearInterval(focusTimer);focusTimer=setInterval(tickFocus,1000)}
+  if(params.get("quick")!=="1")setTimeout(function(){openOnboarding(false)},250);
+}).catch(function(e){console.error(e);document.body.innerHTML="<main style='padding:40px;font-family:system-ui'><h1>Command Center could not start.</h1><p>Refresh the page. Your local data was not intentionally deleted.</p></main>"});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){});
