@@ -281,7 +281,7 @@ function plannerDayCell(d,compact){
 function startOfWeek(d){var x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-x.getDay());return x}
 function renderCalendar(){
   var mode=state.plannerMode||"month",cur=new Date(state.calendarCursor);
-  $$$("[data-planner-mode]").forEach(function(b){b.classList.toggle("active",b.dataset.plannerMode===mode)});
+  $$("[data-planner-mode]").forEach(function(b){b.classList.toggle("active",b.dataset.plannerMode===mode)});
   $("plannerWeekdays").classList.toggle("hidden",mode!=="month");
   if(mode==="month"){
     var y=cur.getFullYear(),m=cur.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay());
