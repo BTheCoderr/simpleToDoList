@@ -91,7 +91,30 @@ function nav(){
 
 function taskHTML(t){
   var p=pname(t.projectId),st=subtaskStats(t),sub=st.total?'<span class="pill">'+st.done+'/'+st.total+' checklist</span>':"",selected=state.selectedTaskIds.has(t.id);
-  return '<div class="task-row" data-task-row="'+t.id+'"><div class="task-actions"><button class="swipe-edit" data-swipe-edit="'+t.id+'">Edit</button><button class="swipe-done" data-swipe-complete="'+t.id+'">'+(t.status==="done"?"Undo":"Done")+'</button><button class="swipe-delete" data-swipe-delete="'+t.id+'">Delete</button></div><div class="task '+(t.status==="done"?"done ":"")+(selected?"selected":"")+'"><label class="task-select" aria-label="Select '+esc(t.title)+'"><input type="checkbox" data-select-task="'+t.id+'" '+(selected?"checked":"")+"></label><button class="checkbtn" data-toggle="'+t.id+'">'+(t.status==="done"?"✓":"")+'</button><div class="taskmain" data-edit-task="'+t.id+'"><div class="tasktitle">'+esc(t.title)+'</div><div class="meta"><span class="pill '+t.priority+'">'+esc(t.priority)+'</span><span class="pill">'+esc(t.status)+'</span>'+(p?'<span class="pill">'+esc(p)+'</span>':"")+tagPills(t)+(t.dueDate?'<span class="pill '+(overdue(t)?"high":"")+'">'+(overdue(t)?"Overdue · ":"")+fmt(t.dueDate,t.dueTime)+'</span>':"")+(t.repeat!=="none"?'<span class="pill">↻ '+esc(t.repeat)+'</span>':"")+sub+'</div></div><button class="dots" data-edit-task="'+t.id+'">•••</button></div></div>'
+  return `<div class="task-row" data-task-row="${t.id}">
+    <div class="task-actions">
+      <button class="swipe-edit" data-swipe-edit="${t.id}">Edit</button>
+      <button class="swipe-done" data-swipe-complete="${t.id}">${t.status==="done"?"Undo":"Done"}</button>
+      <button class="swipe-delete" data-swipe-delete="${t.id}">Delete</button>
+    </div>
+    <div class="task ${t.status==="done"?"done ":""}${selected?"selected":""}">
+      <label class="task-select" aria-label="Select ${esc(t.title)}"><input type="checkbox" data-select-task="${t.id}" ${selected?"checked":""}></label>
+      <button class="checkbtn" data-toggle="${t.id}">${t.status==="done"?"✓":""}</button>
+      <div class="taskmain" data-edit-task="${t.id}">
+        <div class="tasktitle">${esc(t.title)}</div>
+        <div class="meta">
+          <span class="pill ${t.priority}">${esc(t.priority)}</span>
+          <span class="pill">${esc(t.status)}</span>
+          ${p?'<span class="pill">'+esc(p)+'</span>':""}
+          ${tagPills(t)}
+          ${t.dueDate?'<span class="pill '+(overdue(t)?"high":"")+'">'+(overdue(t)?"Overdue · ":"")+fmt(t.dueDate,t.dueTime)+'</span>':""}
+          ${t.repeat!=="none"?'<span class="pill">↻ '+esc(t.repeat)+'</span>':""}
+          ${sub}
+        </div>
+      </div>
+      <button class="dots" data-edit-task="${t.id}" aria-label="Edit ${esc(t.title)}">•••</button>
+    </div>
+  </div>`
 }
 function filteredTasks(){
   var a=activeTasks().slice().sort(function(a,b){return taskScore(a)-taskScore(b)});
