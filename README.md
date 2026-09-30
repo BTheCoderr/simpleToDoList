@@ -42,6 +42,13 @@ Templates and Archive/Trash live under **Tasks**.
 
 Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
 
+### v7.3 activity and export workflows
+
+- **History** — a searchable, filterable local timeline under Review for task, focus, review, template, share, and planning events.
+- **Per-task history** — task records show their recent create/edit/status/reschedule/archive/trash/restore activity when available.
+- **Tasks CSV** — export task data for spreadsheets and analysis without changing the local database.
+- **Workspace Markdown** — export goals, projects, active tasks, notes, and habits as a readable Markdown snapshot.
+
 ### v7.2 planning workflows
 
 - **Planner Month / Week / Day** — switch calendar granularity without leaving Planner; the chosen mode persists locally.
@@ -103,7 +110,7 @@ Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON i
 
 ## PWA
 
-- Offline cache: `command-center-v13`
+- Offline cache: `command-center-v14`
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG install icons
 - Dedicated 512×512 maskable icon
