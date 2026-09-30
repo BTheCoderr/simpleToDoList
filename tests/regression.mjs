@@ -38,9 +38,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.2.0",()=>{
-  assert.equal(APP_VERSION,"7.2.0");
-  assert.equal(pkg.version,"7.2.0");
+test("release version is 7.2.1",()=>{
+  assert.equal(APP_VERSION,"7.2.1");
+  assert.equal(pkg.version,"7.2.1");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, and backup modules are imported",()=>{
@@ -64,7 +64,7 @@ test("browser QA files and scripts exist",()=>{
   assert.ok(fs.existsSync("tests/production.spec.mjs"));
   assert.equal(pkg.scripts.e2e,"playwright test");
   assert.match(workflow,/production-smoke:/);
-  assert.match(workflow,/Wait for Netlify v7.2/);
+  assert.match(workflow,/Wait for Netlify v7.2.1/);
   assert.match(workflow,/production-smoke:\n    if: github\.event_name == \'workflow_dispatch\'/);
 });
 
@@ -82,8 +82,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v13 and caches QA assets",()=>{
-  assert.match(sw,/command-center-v13/);
+test("service worker cache is v14 and caches QA assets",()=>{
+  assert.match(sw,/command-center-v14/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -181,6 +181,12 @@ test("v7.1 advanced recurrence controls exist without schema bump",()=>{
   assert.match(html,/value="selected_weekdays"/);
   assert.match(html,/value="custom_weeks"/);
   assert.match(app,/data-repeat-weekday/);
+});
+
+test("URL navigation state stays reload-safe",()=>{
+  assert.match(app,/history\.replaceState/);
+  assert.match(app,/searchParams\.set\("view",state\.view\)/);
+  assert.match(app,/searchParams\.delete\("quick"\)/);
 });
 
 test("v7.2 planner modes and quick reschedule controls are wired",()=>{

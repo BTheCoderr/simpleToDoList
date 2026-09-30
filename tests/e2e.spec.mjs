@@ -256,8 +256,9 @@ test("Planner month week day modes persist and drag rescheduling updates dates",
   await page.locator('[data-planner-mode="day"]').click();
   await expect(page.locator("#calendarGrid")).toHaveClass(/planner-day-grid/);
 
-  await page.goto("/?view=planner");
+  await page.reload();
   await assertAppBooted(page);
+  await expect(page.locator("#planner")).toHaveClass(/active/);
   await expect(page.locator('[data-planner-mode="day"]')).toHaveClass(/active/);
 
   await page.locator('[data-planner-mode="month"]').click();
