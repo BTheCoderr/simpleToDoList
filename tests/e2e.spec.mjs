@@ -119,7 +119,7 @@ test("task CRUD, Trash restore, and refresh persistence",async ({page})=>{
 test("recurrence spawns the next dated task",async ({page})=>{
   await openTasks(page);
   await createTask(page,{title:"Weekly recurring QA",dueDate:"2026-10-01",repeat:"weekly"});
-  const row=page.locator(".task-row").filter({hasText:"Weekly recurring QA"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Weekly recurring QA"});
   await row.locator(".checkbtn").click();
 
   await expect.poll(async ()=>{
