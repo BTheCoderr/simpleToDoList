@@ -289,7 +289,7 @@ async function ensureDailySnapshot(){
 }
 
 function renderShutdown(){
-  var base=activeTasks(),start=new Date();start.setHours(0,0,0,0),tom=new Date(start);tom.setDate(tom.getDate()+1);
+  var base=activeTasks(),start=new Date();start.setHours(0,0,0,0);var tom=new Date(start);tom.setDate(tom.getDate()+1);
   var done=base.filter(function(t){return t.completedAt&&new Date(t.completedAt)>=start&&new Date(t.completedAt)<tom}),open=base.filter(function(t){return t.status!=="done"&&(t.dueDate===today()||overdue(t))});
   $("shutdownDone").textContent=done.length;$("shutdownOpen").textContent=open.length;$("shutdownOverdue").textContent=open.filter(overdue).length;
   var last=state.activity.filter(function(x){return x.type==="shutdown.completed"}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)})[0];
