@@ -113,8 +113,65 @@ function renderTasks(){
   state.selectedTaskIds=new Set(Array.from(state.selectedTaskIds).filter(function(id){return base.some(function(t){return t.id===id})}));
   var a=filteredTasks();$("taskList").innerHTML=a.length?a.map(taskHTML).join(""):'<div class="empty">Nothing here.</div>';renderBulkBar();
 }
+async function applyBulkChanges(){
+  var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
+  var status=$("bulkStatus").value,priority=$("bulkPriority").value,project=$("bulkProject").value,due=$("bulkDue").value,pending=[];
+  for(var t of items){
+    if(priority)t.priority=priority;if(project!=="__keep__")t.projectId=project;if(due)t.dueDate=due;
+    if(status)await setTaskStatus(t,status);else pending.push(t);
+  }
+  if(pending.length)await saveMany("tasks",pending);
+  await log("task.bulk-updated",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks updated")
+}
+async function bulkArchive(){
+  var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
+  var stamp=new Date().toISOString();items.forEach(function(t){t.archivedAt=stamp});await saveMany("tasks",items);await log("task.bulk-archived",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks archived")
+}
+async function bulkTrash(){
+  var items=state.tasks.filter(function(t){return state.selectedTaskIds.has(t.id)&&!t.deletedAt&&!t.archivedAt});if(!items.length){toast("Select at least one task");return}
+  if(!confirm("Move "+items.length+" selected tasks to Trash?"))return;
+  var stamp=new Date().toISOString();items.forEach(function(t){t.deletedAt=stamp});await saveMany("tasks",items);await log("task.bulk-trashed",items.length+" tasks",{count:items.length});state.selectedTaskIds.clear();await load();toast(items.length+" tasks moved to Trash")
+}
+function clearBulkSelection(){state.selectedTaskIds.clear();renderTasks()}
+function toggleBulkMode(){state.bulkMode=!state.bulkMode;if(!state.bulkMode)state.selectedTaskIds.clear();renderTasks()}
 function streak(h){var s=new Set(h||[]),d=new Date(),n=0;if(!s.has(today()))d.setDate(d.getDate()-1);while(s.has(dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function habitHTML(h){var on=(h.history||[]).indexOf(today())>=0;return'<div class="habit '+(on?"checked":"")+'"><button data-toggle-habit="'+h.id+'">'+(on?"✓":"○")+'</button><div><b>'+esc(h.name)+'</b><small>'+streak(h.history)+' day streak · '+(h.history||[]).length+' check-ins</small></div><button data-delete-habit="'+h.id+'">Delete</button></div>'}
+
+var DASHBOARD_DEFAULT={order:["tasks","habits","projects","capture"],hidden:[]},dashboardDraft=null;
+var DASHBOARD_LABELS={tasks:"Today's priorities",habits:"Habits",projects:"Projects",capture:"Quick inbox"};
+function dashboardPrefs(){
+  try{
+    var saved=JSON.parse(localStorage.getItem("cc-today-layout-v1")||"null"),order=saved&&Array.isArray(saved.order)?saved.order.slice():DASHBOARD_DEFAULT.order.slice(),hidden=saved&&Array.isArray(saved.hidden)?saved.hidden.slice():[];
+    DASHBOARD_DEFAULT.order.forEach(function(key){if(!order.includes(key))order.push(key)});
+    order=order.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
+    hidden=hidden.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
+    return {order:order,hidden:hidden};
+  }catch(e){return {order:DASHBOARD_DEFAULT.order.slice(),hidden:[]}}
+}
+function applyDashboardLayout(){
+  var grid=$("today").querySelector(".grid"),prefs=dashboardPrefs();if(!grid)return;
+  prefs.order.forEach(function(key){var card=grid.querySelector('[data-dashboard-card="'+key+'"]');if(card)grid.appendChild(card)});
+  $("[data-dashboard-card]").forEach(function(card){card.classList.toggle("dashboard-hidden",prefs.hidden.includes(card.dataset.dashboardCard))});
+}
+function renderDashboardOptions(){
+  if(!dashboardDraft)return;
+  $("dashboardOptions").innerHTML=dashboardDraft.order.map(function(key,index){
+    var visible=!dashboardDraft.hidden.includes(key);
+    return '<div class="dashboard-option"><label class="check"><input type="checkbox" data-dashboard-visible="'+key+'" '+(visible?"checked":"")+'> '+esc(DASHBOARD_LABELS[key])+'</label><div class="buttons compact"><button type="button" data-dashboard-move="'+key+'" data-direction="-1" '+(index===0?"disabled":"")+' aria-label="Move '+esc(DASHBOARD_LABELS[key])+' up">↑</button><button type="button" data-dashboard-move="'+key+'" data-direction="1" '+(index===dashboardDraft.order.length-1?"disabled":"")+' aria-label="Move '+esc(DASHBOARD_LABELS[key])+' down">↓</button></div></div>'
+  }).join("");
+}
+function openDashboardCustomize(){
+  var prefs=dashboardPrefs();dashboardDraft={order:prefs.order.slice(),hidden:prefs.hidden.slice()};renderDashboardOptions();openDialog($("dashboardModal"));
+}
+function moveDashboardCard(key,direction){
+  if(!dashboardDraft)return;var from=dashboardDraft.order.indexOf(key),to=from+Number(direction);if(from<0||to<0||to>=dashboardDraft.order.length)return;
+  var tmp=dashboardDraft.order[from];dashboardDraft.order[from]=dashboardDraft.order[to];dashboardDraft.order[to]=tmp;renderDashboardOptions();
+}
+function saveDashboardLayout(e){
+  e.preventDefault();if(!dashboardDraft)return;localStorage.setItem("cc-today-layout-v1",JSON.stringify(dashboardDraft));$("dashboardModal").close();applyDashboardLayout();toast("Today layout saved")
+}
+function resetDashboardDraft(){dashboardDraft={order:DASHBOARD_DEFAULT.order.slice(),hidden:[]};renderDashboardOptions()}
+
 function renderToday(){
   var now=new Date(),hr=now.getHours();$("todayDate").textContent=now.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});$("greeting").textContent=hr<12?"Good morning.":hr<18?"Good afternoon.":"Good evening.";
   var base=activeTasks(),open=base.filter(function(t){return t.status!=="done"}),focus=open.filter(function(t){return t.priority==="high"||t.status==="doing"||t.dueDate===today()||overdue(t)}).slice(0,6);
@@ -515,6 +572,17 @@ document.addEventListener("click",async function(e){
   if(b.dataset.restoreSnapshot)await restoreSnapshot(b.dataset.restoreSnapshot);
   if(b.dataset.deleteSnapshot){await del("snapshots",b.dataset.deleteSnapshot);state.snapshots=await all("snapshots");renderSnapshots();toast("Snapshot removed")}
   if(b.dataset.paletteAction)await runPaletteAction(b.dataset.paletteAction);
+  if(b.dataset.dashboardMove)moveDashboardCard(b.dataset.dashboardMove,b.dataset.direction);
+});
+document.addEventListener("change",function(e){
+  var select=e.target.closest&&e.target.closest("[data-select-task]");
+  if(select){select.checked?state.selectedTaskIds.add(select.dataset.selectTask):state.selectedTaskIds.delete(select.dataset.selectTask);renderTasks();return}
+  var visible=e.target.closest&&e.target.closest("[data-dashboard-visible]");
+  if(visible&&dashboardDraft){
+    var key=visible.dataset.dashboardVisible;
+    if(visible.checked)dashboardDraft.hidden=dashboardDraft.hidden.filter(function(x){return x!==key});
+    else if(!dashboardDraft.hidden.includes(key))dashboardDraft.hidden.push(key);
+  }
 });
 var swipeStart=null;
 document.addEventListener("touchstart",function(e){
@@ -538,6 +606,16 @@ $$(".kanban-col").forEach(function(col){col.addEventListener("dragover",function
 $("menu").onclick=function(){$("sidebar").classList.toggle("open")};
 $("openPalette").onclick=openPalette;$("sidebarPalette").onclick=openPalette;
 $("addTask").onclick=function(){openQuick()};
+$("customizeToday").onclick=openDashboardCustomize;
+$("dashboardForm").onsubmit=saveDashboardLayout;
+$("resetDashboard").onclick=resetDashboardDraft;
+$("bulkToggle").onclick=toggleBulkMode;
+$("bulkSelectAll").onclick=function(){filteredTasks().forEach(function(t){state.selectedTaskIds.add(t.id)});renderTasks()};
+$("bulkClear").onclick=clearBulkSelection;
+$("bulkApply").onclick=applyBulkChanges;
+$("bulkArchive").onclick=bulkArchive;
+$("bulkTrash").onclick=bulkTrash;
+$("tagFilter").onchange=function(){state.tagFilter=this.value;renderTasks()};
 $("quickHelp").onclick=function(){openQuick()};
 $("captureForm").onsubmit=quickCapture;
 $("quickInput").oninput=quickPreview;
