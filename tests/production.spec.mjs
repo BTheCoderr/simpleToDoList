@@ -54,6 +54,7 @@ test("production desktop and mobile release surfaces stay usable",async ({page})
   await expect(page.locator('#sidebar [data-view="tasks"]')).toBeVisible();
   await page.locator('#sidebar [data-view="tasks"]').click();
   await expect(page.getByRole("heading",{name:"Tasks",exact:true})).toBeVisible();
+  await page.waitForTimeout(300);
   await expect(page.locator('#tasks [data-add="task"]')).toBeVisible();
   const mobileLayout=await page.evaluate(()=>{
     const viewport=document.documentElement.clientWidth;
