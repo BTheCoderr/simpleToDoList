@@ -51,8 +51,8 @@ test("production desktop and mobile release surfaces stay usable",async ({page})
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
 
   await page.getByRole("button",{name:"Open navigation"}).click();
-  await expect(page.getByRole("button",{name:/Tasks/})).toBeVisible();
-  await page.getByRole("button",{name:/Tasks/}).click();
+  await expect(page.locator('#sidebar [data-view="tasks"]')).toBeVisible();
+  await page.locator('#sidebar [data-view="tasks"]').click();
   await expect(page.getByRole("heading",{name:"Tasks",exact:true})).toBeVisible();
   await expect(page.locator('#tasks [data-add="task"]')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2)).toBe(true);
