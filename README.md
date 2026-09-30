@@ -1,25 +1,27 @@
 # Command Center
 
 <!-- repo-intro:start -->
-**Project snapshot:** Command Center is a local-first productivity PWA that turns a once-simple to-do project into a full personal operating system with planning, focus, goals, habits, review workflows, backups, and browser QA.
+**Project snapshot:** Command Center is a private, local-first productivity PWA that grew from a simple to-do app into a personal operating system with planning, focus, goals, habits, review workflows, recovery tools, privacy controls, and browser QA.
 
-**What it demonstrates:** JavaScript · IndexedDB · PWA/offline · Playwright · local-first product architecture.
+**What it demonstrates:** JavaScript · IndexedDB · PWA/offline · Playwright · local-first product architecture · progressive enhancement.
 <!-- repo-intro:end -->
 
-Command Center is a private, local-first personal productivity PWA. User data stays on the device in IndexedDB; there is no account system or cloud database.
+Command Center keeps user data on the device in IndexedDB. There is no account system or cloud database.
 
-## Next release: v7.1 Smart Views + Scheduling
+## Current code release: v7.3 Local-Only Polish
 
-v7.1 builds on the power-user release with Saved Task Views and richer recurring schedules. It remains fully local, keeps IndexedDB schema v4, and does not add a backend.
+v7.3 finishes the local-only product layer without changing IndexedDB schema v4.
 
-### Production QA
+### v7.3 highlights
 
-The release now has two quality layers:
+- **Activity History** — a searchable/filterable local audit trail for meaningful task, project, goal, review, backup, privacy, and export events.
+- **Human-readable exports** — full JSON recovery backup plus Tasks CSV and Workspace Markdown.
+- **Optional Privacy Lock** — a local convenience lock using PBKDF2 + SHA-256 with a random salt. It hides the UI on a fresh session but does **not** encrypt IndexedDB.
+- **Mobile task stages** — the existing swipe action row now supports fast moves to Next and Doing in addition to Edit, Done, and Delete.
+- **Goal → Project → Task flow** — create projects directly from goals and tasks directly from project cards.
+- **Offline cache v15** — privacy and export modules are part of the offline app shell.
 
-- **Fast regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backups, PWA metadata, CSS structure, and dependency/dead-code checks.
-- **Playwright browser QA** — real Chromium workflows covering task CRUD, Trash/restore, refresh persistence, recurring tasks, Planner, Board, Focus, Goals, Review, snapshots, export/import rejection, offline reload, 500/1,000/5,000-task stress, modal focus, and mobile large-text layout.
-
-Every pull request and push to `master` runs regression + browser E2E. While Netlify deploy credits are deferred, the live production smoke is manual and waits for v7.1 before testing `https://command-center-local.netlify.app`.
+Production deployment is intentionally deferred while Netlify build credits are unavailable. GitHub remains the source of truth and every change is tested before merge.
 
 ## Product structure
 
@@ -40,52 +42,63 @@ Top-level navigation stays intentionally small:
 
 Templates and Archive/Trash live under **Tasks**.
 
-Daily Shutdown, Weekly Review, and Analytics live under one **Review** family.
+Daily Shutdown, Weekly Review, Analytics, and Activity History live under **Review**.
 
-### v7.2 planning workflows
+### Planning and execution
 
-- **Planner Month / Week / Day** — switch calendar granularity without leaving Planner; the chosen mode persists locally.
-- **Drag-to-reschedule** — drag dated or unscheduled tasks onto a Planner day to change the due date.
-- **Quick reschedule** — one tap in the task editor for Today, Tomorrow, +1 week, or Clear date.
-- **Persistent Kanban order** — drag cards within or across Board columns and keep that order after reload.
+- Tasks with Inbox / Next / Doing / Done states
+- Smart Quick Add
+- Tags / contexts
+- Saved Task Views
+- Multi-select bulk actions
+- Month / Week / Day Planner
+- Drag-to-reschedule
+- Quick reschedule presets
+- Persistent Kanban ordering
+- Focus Mode
+- Subtasks
+- Daily, weekday, weekly, monthly, every-X-days, every-X-weeks, selected-weekday, and after-completion recurrence
 
-### v7 power-user workflows
+### Outcomes and reflection
 
-- **Tags / contexts** — add reusable task tags such as `#calls`, `#errands`, or `#computer`. Quick Add still resolves a matching hashtag to a project, while extra/unmatched hashtags become task tags.
-- **Bulk task actions** — filter a task list, select visible tasks, and update status, priority, project, or due date together; Archive and Trash work on the selected set too.
-- **Custom Today dashboard** — hide/show and reorder Today's priorities, Habits, Projects, and Quick inbox. Layout preferences stay in localStorage and do not affect the IndexedDB schema.
+- Goals → Projects → Tasks hierarchy
+- Notes
+- Habits
+- Customizable Today dashboard
+- Daily Shutdown
+- Weekly Review
+- Analytics
+- Activity History
 
-### v7.1 smart views + scheduling
+### Recovery and privacy
 
-- **Saved Views** — save the current Tasks status, project, and tag filters locally, then restore the exact combination from a one-tap chip.
-- **Specific weekday recurrence** — schedule a repeating task for one or more weekdays such as Monday / Wednesday / Friday.
-- **Every X weeks** — use recurring intervals such as every 2 or 3 weeks.
-- **Smarter Quick Add** — understands natural recurrence phrases including `every 2 weeks`, `every Tuesday`, and `every Monday, Wednesday and Friday`.
-
-### v7.1 smart views + scheduling
-
-- **Saved Task Views** — save the current status + project + tag filter combination under a name, then reopen it in one tap. Saved views live in localStorage.
-- **Selected weekday recurrence** — repeat on explicit days such as Mon/Wed/Fri.
-- **Every X weeks** — recurring tasks can now run every 2, 3, 4, etc. weeks.
-- **Quick Add scheduling** — phrases such as `Sprint review every 2 weeks` and `Gym every Mon/Wed/Fri` are parsed locally.
-
-
+- Rotating local snapshots
+- Full JSON backup/import with validation
+- Tasks CSV export
+- Workspace Markdown export
+- Archive / Trash / Undo
+- Optional local Privacy Lock
+- PWA offline support and controlled update activation
 
 ## Frontend architecture
 
+The app stays dependency-light and browser-native:
+
 - `public/app.js` — UI rendering, dialogs, events, workflow orchestration
-- `public/core.js` — pure task normalization, dates, recurrence, Quick Add parsing, goal progress
+- `public/core.js` — task normalization, dates, recurrence, Quick Add parsing, goal progress
 - `public/storage.js` — IndexedDB schema, migrations, reads/writes, storage constants
-- `public/backup.js` — backup compatibility and import safety validation
+- `public/backup.js` — backup compatibility and import validation
+- `public/privacy.js` — local privacy-code derivation/verification
+- `public/exporters.js` — CSV and Markdown generation
 - `public/sw.js` — offline app shell and controlled update activation
-- `public/style.css` — shared layout and responsive styles
+- `public/style.css` — shared responsive styles
 - `public/index.html` — application shell
 
-The IndexedDB name `command-center-v2` is retained **on purpose**. Renaming it would make existing local data appear missing.
+The IndexedDB database name `command-center-v2` is retained **on purpose** so existing local data remains visible.
 
 ## Local storage model
 
-IndexedDB schema v4 stores:
+IndexedDB schema **v4** stores:
 
 - tasks
 - projects
@@ -97,49 +110,43 @@ IndexedDB schema v4 stores:
 - snapshots
 - meta
 
-Explicit migrations upgrade older schemas in place.
+UI preferences, Saved Views, Today layout, Planner mode, and Privacy Lock metadata use localStorage/sessionStorage.
 
-Snapshots are capped at 7 rotating recovery points and 4 MB per snapshot. JSON import is capped at 8 MB and validates backup version, required stores, and record shape **before** any local data is cleared.
+Snapshots keep up to 7 rotating recovery points and cap each local snapshot at 4 MB. JSON import is capped at 8 MB and validates backup version, stores, and record shapes **before** local data is replaced.
 
 ## PWA
 
-- Offline cache: `command-center-v13`
+- Offline cache: `command-center-v15`
 - 180×180 Apple touch icon
-- 192×192 and 512×512 PNG install icons
-- Dedicated 512×512 maskable icon
+- 192×192 and 512×512 PNG icons
+- Dedicated maskable icon
 - Web Share Target support
 - Home Screen install support
 - Natural device orientation
-- Controlled update UX: a waiting service worker shows **New version ready → Reload** instead of silently replacing the active app
-- Core application modules and install icons are cached for offline use
+- Controlled “New version ready → Reload” service-worker update flow
 
-## Accessibility
+## Quality gates
 
-The hardened app includes explicit modal focus trapping and returns focus to the control that opened a dialog. Existing skip navigation, reduced-motion support, focus-visible states, live status regions, and mobile touch targets remain in place. Browser QA also checks large-text/mobile overflow behavior.
+Every pull request and push to `master` runs:
 
-## Quality commands
+1. **Regression gate** — syntax, DOM wiring, migrations, recurrence, Quick Add, backup safety, PWA metadata, CSS structure, exports, privacy wiring, and dead-code checks.
+2. **Playwright Chromium E2E** — real browser workflows for CRUD, recurring tasks, Planner, Board, Focus, Goals, Review, History, recovery, exports, privacy lock, offline use, 5,000-task stress, accessibility, and mobile layout.
+
+Production smoke remains a **manual** workflow while Netlify deployment is deferred.
+
+## Commands
 
 ```bash
 npm test
 npm run check
 npm run e2e
-```
-
-To smoke-test production directly:
-
-```bash
-PLAYWRIGHT_BASE_URL=https://command-center-local.netlify.app \
-  npx playwright test tests/production.spec.mjs
-```
-
-## Run locally
-
-```bash
 npm run dev
 ```
 
-Then open http://localhost:4000.
+Local server: http://localhost:4000
 
 ## Deploy
 
-Netlify publishes `public`. No secrets, cloud database, or environment variables are required for the application itself.
+Netlify publishes `public`. The application itself requires no secrets, cloud database, or environment variables.
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history.
