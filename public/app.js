@@ -65,7 +65,7 @@ function renderToday(){
   $("todayHabits").innerHTML=state.habits.length?state.habits.slice(0,5).map(habitHTML).join(""):'<div class="empty">Add a habit.</div>';
   $("todayProjects").innerHTML=state.projects.slice(0,5).map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<div class="mini"><b>'+esc(p.name)+'</b><small>'+d+'/'+a.length+' tasks complete</small><div class="progress"><i style="width:'+pc+'%"></i></div></div>'}).join("")||'<div class="empty">No projects yet.</div>';
 }
-function renderProjects(){$("projectGrid").innerHTML=state.projects.map(function(p){var a=state.tasks.filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<article class="card"><small class="caps">'+esc(p.area||"PROJECT")+'</small><h3>'+esc(p.name)+'</h3><p>'+a.length+' tasks · '+pc+'% complete</p><footer><div class="progress"><i style="width:'+pc+'%"></i></div><div class="row"><button data-focus-project="'+p.id+'" class="link">View tasks</button><button data-delete-project="'+p.id+'">Delete</button></div></footer></article>'}).join("")||'<div class="empty">Create a project for an outcome that takes more than one task.</div>'}
+function renderProjects(){$("projectGrid").innerHTML=state.projects.map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<article class="card"><small class="caps">'+esc(p.area||"PROJECT")+'</small><h3>'+esc(p.name)+'</h3><p>'+a.length+' tasks · '+pc+'% complete</p><footer><div class="progress"><i style="width:'+pc+'%"></i></div><div class="row"><button data-focus-project="'+p.id+'" class="link">View tasks</button><button data-delete-project="'+p.id+'">Delete</button></div></footer></article>'}).join("")||'<div class="empty">Create a project for an outcome that takes more than one task.</div>'}
 function renderNotes(){$("noteGrid").innerHTML=state.notes.slice().sort(function(a,b){return Number(b.pinned)-Number(a.pinned)}).map(function(n){return'<article class="card note" data-edit-note="'+n.id+'"><small class="caps">'+(n.pinned?"PINNED NOTE":"NOTE")+'</small><h3>'+esc(n.title)+'</h3><p>'+esc(n.body||"Empty note")+'</p><small>'+new Date(n.updatedAt).toLocaleDateString()+'</small></article>'}).join("")||'<div class="empty">Your thinking space is empty.</div>'}
 function renderHabits(){$("habitList").innerHTML=state.habits.map(habitHTML).join("")||'<div class="empty">Start with one tiny habit.</div>'}
 
@@ -225,7 +225,7 @@ function renderWeeklyReview(){
   var completed=history.filter(function(t){return t.completedAt&&new Date(t.completedAt)>=week}),over=base.filter(overdue),stale=base.filter(function(t){return t.status!=="done"&&new Date(t.createdAt)<week&&!overdue(t)});
   $("reviewCompleted").textContent=completed.length;$("reviewOverdue").textContent=over.length;$("reviewCarry").textContent=stale.length;
   $("reviewFocus").textContent=state.activity.filter(function(x){return x.type==="focus.completed"&&new Date(x.createdAt)>=week}).reduce(function(s,x){return s+(Number(x.minutes)||0)},0)+"m";
-  $("reviewWins").innerHTML=completed.length?completed.slice(0,8).map(taskHTML).join(""):'<div class="empty">No completed tasks in the last 7 days yet.</div>';
+  $("reviewWins").innerHTML=completed.length?completed.slice(0,8).map(function(t){return '<div class="review-win"><span>✓</span><div><b>'+esc(t.title)+'</b><small>'+(t.completedAt?new Date(t.completedAt).toLocaleDateString():"Completed")+'</small></div></div>'}).join(""):'<div class="empty">No completed tasks in the last 7 days yet.</div>';
   var attention=over.concat(stale.filter(function(t){return !over.some(function(o){return o.id===t.id})})).slice(0,8);
   $("reviewNeedsAttention").innerHTML=attention.length?attention.map(taskHTML).join(""):'<div class="empty">Nothing overdue or stale. Nice.</div>';
 }
@@ -241,9 +241,9 @@ function renderTemplates(){
   $("templateGrid").innerHTML=builtInTemplates.map(function(t){return templateCard(t,true)}).join("")+state.templates.map(function(t){return templateCard(t,false)}).join("");
 }
 function openTemplate(t){
-  $("templateForm").reset();$("templateId").value=t?t.id:"";$("templateName").value=t?t.name:"";$("templateTitle").value=t?t.title:"";$("templateDescription").value=t?t.description||"":"";
+  $("templateForm").reset();var existing=!!(t&&t.id);$("templateId").value=existing?t.id:"";$("templateName").value=t?t.name:"";$("templateTitle").value=t?t.title:"";$("templateDescription").value=t?t.description||"":"";
   $("templatePriority").value=t?t.priority||"medium":"medium";$("templateProject").value=t?t.projectId||"":"";$("templateChecklist").value=t?(t.subtasks||[]).map(function(s){return typeof s==="string"?s:s.title}).join("\n"):"";
-  $("templateHeading").textContent=t?"Edit template":"New template";$("deleteTemplate").classList.toggle("hidden",!t);$("templateModal").showModal()
+  $("templateHeading").textContent=existing?"Edit template":"New template";$("deleteTemplate").classList.toggle("hidden",!existing);$("templateModal").showModal()
 }
 async function saveTemplateForm(e){
   e.preventDefault();var id=$("templateId").value,name=$("templateName").value.trim(),title=$("templateTitle").value.trim();if(!name||!title)return;
@@ -256,8 +256,7 @@ async function useTemplate(id,builtin){
 }
 async function saveCurrentAsTemplate(){
   var title=$("taskTitle").value.trim();if(!title){toast("Give the task a title first");return}
-  var name=prompt("Template name",title);if(!name)return;
-  await save("templates",{id:uid("tpl"),name:name.trim(),title:title,description:$("taskDescription").value.trim(),priority:$("taskPriority").value,projectId:$("taskProject").value,subtasks:editingSubtasks.map(function(s){return s.title}),updatedAt:new Date().toISOString()});await load();toast("Saved as template");
+  $("taskModal").close();openTemplate({name:title,title:title,description:$("taskDescription").value.trim(),priority:$("taskPriority").value,projectId:$("taskProject").value,subtasks:editingSubtasks.map(function(s){return s.title})});
 }
 function archiveRow(t,trash){return '<div class="archive-row"><div><b>'+esc(t.title)+'</b><small>'+(trash?"Trashed ":"Archived ")+new Date(trash?t.deletedAt:t.archivedAt).toLocaleDateString()+'</small></div><div class="buttons compact"><button data-restore-task="'+t.id+'">Restore</button>'+(trash?'<button class="dangerbtn" data-purge-task="'+t.id+'">Delete forever</button>':"")+'</div></div>'}
 function renderArchive(){
