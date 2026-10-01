@@ -204,12 +204,14 @@ test("Morning Signal Builder opens once per day and locks selected Must-Wins",as
   const b=page.locator(".signal-builder-item").filter({hasText:"Morning choice B"}).locator("input");
   await a.check();
   await b.check();
+  await page.locator("#dailyIntentInput").fill("The important work is visibly moved forward.");
   await expect(page.locator("#signalBuilderCount")).toHaveText("2/5");
   await page.locator("#signalBuilderForm .primary").click();
   await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
   await page.goto("/?view=today");
   await expect(page.locator("#sToday")).toHaveText("2/5");
   await expect(page.locator("#todayTasks")).toContainText("Morning choice A");
+  await expect(page.locator("#dailyIntentText")).toHaveText("The important work is visibly moved forward.");
   await page.reload();
   await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
 });
