@@ -56,8 +56,12 @@
             <article><span>Overdue</span><b id="sOverdue">0</b><small>still needs a decision</small></article>
           </div>
         </div>
+        <div id="dailyIntentBanner" class="daily-intent-banner">
+          <div><small class="caps">TODAY'S INTENT</small><b id="dailyIntentText">If today goes right, what will be different by tonight?</b></div>
+          <button id="editDailyIntent" type="button">Set intent</button>
+        </div>
         <div class="grid">
-          <div class="panel wide signal-panel" data-dashboard-card="tasks"><div class="panelhead"><div><small class="caps">SIGNAL</small><h3>Today's 3–5 Must-Wins</h3></div><button data-view="focus" class="link">Work the Signal</button></div><div id="todayTasks" class="stack"></div></div>
+          <div class="panel wide signal-panel" data-dashboard-card="tasks"><div class="panelhead"><div><small class="caps">SIGNAL</small><h3>Today's 3–5 Must-Wins</h3></div><div class="buttons compact"><button id="lockInFromToday" class="primary" type="button">Lock In</button><button data-view="focus" class="link">Focus</button></div></div><div id="todayTasks" class="stack"></div></div>
           <div class="panel wide noise-panel" data-dashboard-card="noise"><div class="panelhead"><div><small class="caps">NOISE PARKING LOT</small><h3>Not today unless it earns a spot</h3></div><button data-view="tasks" class="link">See all tasks</button></div><div id="todayNoise" class="noise-list"></div></div>
           <div class="panel" data-dashboard-card="habits"><div class="panelhead"><div><small class="caps">MOMENTUM</small><h3>Habits</h3></div></div><div id="todayHabits" class="stack"></div></div>
           <div class="panel" data-dashboard-card="projects"><div class="panelhead"><div><small class="caps">PROGRESS</small><h3>Projects</h3></div></div><div id="todayProjects" class="stack"></div></div>
@@ -129,6 +133,7 @@
             <div id="focusClock">25:00</div>
             <div class="focus-actions"><button id="focusStart" class="primary">Start focus</button><button id="focusPause">Pause</button><button id="focusReset">Reset</button></div>
             <button id="focusComplete" class="successbtn">✓ Complete & next Signal</button>
+            <button id="focusLockIn" class="lockin-launch">◉ Enter Lock-In Mode</button>
           </div>
           <div class="panel focus-side"><small class="caps">TODAY</small><h3>Focus history</h3><div id="focusHistory" class="stack"></div></div>
         </div>
@@ -201,7 +206,8 @@
         <div class="grid review-grid">
           <div class="panel"><div class="panelhead"><div><small class="caps">WINS</small><h3>Completed this week</h3></div></div><div id="reviewWins" class="stack"></div></div>
           <div class="panel"><div class="panelhead"><div><small class="caps">DECIDE</small><h3>Overdue / stale</h3></div></div><div id="reviewNeedsAttention" class="stack"></div></div>
-          <div class="panel wide"><div class="panelhead"><div><small class="caps">NEXT WEEK</small><h3>Choose your top 3</h3></div></div>
+          <div class="panel wide alignment-panel"><div class="panelhead"><div><small class="caps">WHERE SIGNAL WENT</small><h3>What actually received attention</h3></div><small>Last 7 days</small></div><div id="weeklyAlignment" class="weekly-alignment"></div></div>
+          <div class="panel wide"><div class="panelhead"><div><small class="caps">NEXT WEEK</small><h3>What deserves to matter next week?</h3></div></div>
             <form id="weeklyPlanForm" class="weekly-plan">
               <input id="weekly1" placeholder="Priority #1">
               <input id="weekly2" placeholder="Priority #2">
@@ -416,10 +422,58 @@
     <form id="signalBuilderForm" class="modal signal-builder-modal">
       <div class="modalhead"><div><small class="caps">MORNING SIGNAL</small><h2>Choose today’s 3–5 Must-Wins</h2></div><button type="button" id="signalBuilderSkip" class="icon" aria-label="Skip morning Signal">×</button></div>
       <p>Review yesterday’s unfinished Signal, overdue work, and active priorities. You decide what earns attention today.</p>
+      <label class="daily-intent-field">If today goes right, what will be different by tonight?
+        <input id="dailyIntentInput" maxlength="180" placeholder="Example: Praxis feedback flow is tested and ready to show.">
+      </label>
       <div class="signal-builder-counter"><span>Selected</span><b id="signalBuilderCount">0/5</b></div>
       <div id="signalBuilderCandidates" class="signal-builder-candidates"></div>
       <div class="modalactions"><button type="button" id="signalBuilderSkipBottom">Skip today</button><span></span><span></span><button class="primary">Lock today’s Signal</button></div>
     </form>
+  </dialog>
+
+  <dialog id="lockInModal" class="lockin-dialog">
+    <div class="lockin-shell">
+      <div class="lockin-topbar">
+        <div class="brand"><span>C</span><div><b>Command Center</b><small>LOCK-IN MODE</small></div></div>
+        <button id="lockInExit" class="icon" type="button" aria-label="Exit Lock-In Mode">×</button>
+      </div>
+      <main class="lockin-main">
+        <small class="lockin-kicker">ONE THING</small>
+        <h2 id="lockInTitle">Choose a Must-Win</h2>
+        <p id="lockInIntent" class="lockin-intent"></p>
+        <div id="lockInMeta" class="lockin-meta"></div>
+        <div class="lockin-next">
+          <small class="caps">NEXT ACTION</small>
+          <b id="lockInNextAction">Start the work.</b>
+        </div>
+        <div id="lockInClock" class="lockin-clock">25:00</div>
+        <div class="focus-presets lockin-presets"><button type="button" data-lock-minutes="25">25 min</button><button type="button" data-lock-minutes="50">50 min</button><button type="button" data-lock-minutes="90">90 min</button></div>
+        <div class="lockin-actions">
+          <button id="lockInStart" class="primary" type="button">Start</button>
+          <button id="lockInPause" type="button">Pause</button>
+          <button id="lockInComplete" class="successbtn" type="button">✓ Done</button>
+          <button id="lockInPark" type="button">Park</button>
+        </div>
+        <form id="lockInCaptureForm" class="lockin-capture">
+          <label><small>Something popped into your head?</small><input id="lockInCapture" autocomplete="off" maxlength="180" placeholder="Capture it. Stay here."></label>
+          <button type="submit">Park thought</button>
+        </form>
+        <small class="lockin-rule">Nothing captured here becomes Signal automatically.</small>
+      </main>
+    </div>
+  </dialog>
+
+  <dialog id="signalClearModal" class="signal-clear-dialog">
+    <div class="signal-clear">
+      <small class="caps">SIGNAL CLEAR</small>
+      <h2 id="signalClearScore">0 / 0</h2>
+      <p>You finished what you said mattered today.</p>
+      <div class="signal-clear-actions">
+        <button id="signalClearTomorrow" class="primary" type="button">Plan tomorrow</button>
+        <button id="signalClearNoise" type="button">Review Noise</button>
+        <button id="signalClearDone" type="button">I'm done</button>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="signalSwapModal">
