@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Command Center">
-  <meta name="description" content="Private local-first personal productivity command center">
+  <meta name="description" content="Private local-first signal-first productivity command center">
   <title>Command Center</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -22,7 +22,7 @@
     <aside id="sidebar">
       <div class="brand"><span>C</span><div><b>Command Center</b><small>private · local-first</small></div></div>
       <nav aria-label="Command Center navigation">
-        <button class="nav active" data-view="today">⌂ Today</button>
+        <button class="nav active" data-view="today">◎ Signal</button>
         <button class="nav" data-view="tasks">✓ Tasks <i id="openCount">0</i></button>
         <button class="nav" data-view="planner">▣ Planner</button>
         <button class="nav" data-view="board">⊞ Board</button>
@@ -41,31 +41,32 @@
     <main id="mainContent" tabindex="-1">
       <header>
         <button id="menu" class="icon mobile" aria-label="Open navigation">☰</button>
-        <div><small id="eyebrow">YOUR DAY</small><h1 id="title" tabindex="-1">Today</h1></div>
+        <div><small id="eyebrow">3–5 MUST-WINS</small><h1 id="title" tabindex="-1">Signal</h1></div>
         <div class="actions"><input id="search" aria-label="Search everything" placeholder="Search everything"><button id="openPalette" class="palette-button" type="button" aria-label="Open command palette">⌘K</button><button id="addTask" class="primary" aria-label="Quick add task">＋ Quick add</button></div>
       </header>
       <div id="searchBox" class="searchbox hidden"></div>
 
       <section id="today" class="view active">
         <div class="hero">
-          <div class="hero-copy"><small id="todayDate" class="caps"></small><h2 id="greeting">Good day.</h2><p>Keep Today small. Capture everything else and let the system hold it.</p><button id="customizeToday" class="link dashboard-customize" type="button">Customize Today</button></div>
+          <div class="hero-copy"><small id="todayDate" class="caps"></small><h2 id="greeting">Good day.</h2><p><strong>Signal first.</strong> Choose 3–5 Must-Wins that actually need to move today. Everything else is noise until the Signal is handled.</p><div class="signal-doctrine"><span>3–5 Must-Wins</span><span>Finish &gt; bounce</span><span>Noise gets parked</span></div><button id="customizeToday" class="link dashboard-customize" type="button">Customize Signal</button></div>
           <div class="stats">
-            <article><span>Today</span><b id="sToday">0</b><small>priorities</small></article>
-            <article><span>Overdue</span><b id="sOverdue">0</b><small>needs a decision</small></article>
-            <article><span>This week</span><b id="sWeek">0</b><small>completed</small></article>
-            <article><span>Projects</span><b id="sProjects">0</b><small>active</small></article>
+            <article><span>Signal</span><b id="sToday">0/5</b><small>chosen Must-Wins</small></article>
+            <article><span>Signal done</span><b id="sSignalDone">0</b><small>finished today</small></article>
+            <article><span>Noise</span><b id="sNoise">0</b><small>parked outside Signal</small></article>
+            <article><span>Overdue</span><b id="sOverdue">0</b><small>still needs a decision</small></article>
           </div>
         </div>
         <div class="grid">
-          <div class="panel wide" data-dashboard-card="tasks"><div class="panelhead"><div><small class="caps">FOCUS</small><h3>Today's priorities</h3></div><button data-view="focus" class="link">Start focus</button></div><div id="todayTasks" class="stack"></div></div>
+          <div class="panel wide signal-panel" data-dashboard-card="tasks"><div class="panelhead"><div><small class="caps">SIGNAL</small><h3>Today's 3–5 Must-Wins</h3></div><button data-view="focus" class="link">Work the Signal</button></div><div id="todayTasks" class="stack"></div></div>
+          <div class="panel wide noise-panel" data-dashboard-card="noise"><div class="panelhead"><div><small class="caps">NOISE PARKING LOT</small><h3>Not today unless it earns a spot</h3></div><button data-view="tasks" class="link">See all tasks</button></div><div id="todayNoise" class="noise-list"></div></div>
           <div class="panel" data-dashboard-card="habits"><div class="panelhead"><div><small class="caps">MOMENTUM</small><h3>Habits</h3></div></div><div id="todayHabits" class="stack"></div></div>
           <div class="panel" data-dashboard-card="projects"><div class="panelhead"><div><small class="caps">PROGRESS</small><h3>Projects</h3></div></div><div id="todayProjects" class="stack"></div></div>
-          <div class="panel wide" data-dashboard-card="capture"><div class="panelhead"><div><small class="caps">SMART CAPTURE</small><h3>Quick inbox</h3></div><button id="quickHelp" class="link" type="button">Syntax</button></div><form id="captureForm" class="capture"><input id="capture" autocomplete="off" placeholder="Call Josh tomorrow 3pm #work #calls !high"><button class="primary">Capture</button></form><small class="hint">Understands dates, #project, extra #tags, priorities and recurring rules.</small></div>
+          <div class="panel wide" data-dashboard-card="capture"><div class="panelhead"><div><small class="caps">CAPTURE WITHOUT DISTRACTION</small><h3>Quick inbox</h3></div><button id="quickHelp" class="link" type="button">Syntax</button></div><form id="captureForm" class="capture"><input id="capture" autocomplete="off" placeholder="Capture it here — promote it only if it becomes Signal"><button class="primary">Park it</button></form><small class="hint">New captures stay outside today's Signal until you deliberately promote them.</small></div>
         </div>
       </section>
 
       <section id="tasks" class="view">
-        <div class="toolbar tasks-toolbar"><div class="filters"><button class="active" data-filter="open">Open</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button><select id="projectFilter" aria-label="Filter tasks by project"><option value="">All projects</option></select><select id="tagFilter" aria-label="Filter tasks by tag"><option value="">All tags</option></select><button id="saveCurrentView" type="button">Save view</button></div><div class="buttons compact task-tools"><button id="bulkToggle" type="button">Select</button><button data-view="templates">Templates</button><button data-view="archive">Archive</button><button data-add="task" class="primary">＋ New task</button></div></div>
+        <div class="toolbar tasks-toolbar"><div class="filters"><button data-filter="signal">Signal</button><button class="active" data-filter="open">Open</button><button data-filter="noise">Noise</button><button data-filter="inbox">Inbox</button><button data-filter="next">Next</button><button data-filter="doing">Doing</button><button data-filter="done">Done</button><button data-filter="all">All</button><select id="projectFilter" aria-label="Filter tasks by project"><option value="">All projects</option></select><select id="tagFilter" aria-label="Filter tasks by tag"><option value="">All tags</option></select><button id="saveCurrentView" type="button">Save view</button></div><div class="buttons compact task-tools"><button id="bulkToggle" type="button">Select</button><button data-view="templates">Templates</button><button data-view="archive">Archive</button><button data-add="task" class="primary">＋ New task</button></div></div>
         <div id="savedViews" class="saved-views" aria-label="Saved task views"></div>
         <div id="bulkBar" class="bulk-bar hidden" aria-live="polite">
           <b><span id="bulkCount">0</span> selected</b>
@@ -117,7 +118,7 @@
           <div class="focus-card">
             <small class="caps">DEEP WORK</small>
             <h2>Focus Mode</h2>
-            <p id="focusStatusText">Pick one task. Everything else can wait.</p>
+            <p id="focusStatusText">Pick one Must-Win. Noise can wait.</p>
             <select id="focusTask"></select>
             <div class="focus-presets"><button data-minutes="25">25 min</button><button data-minutes="50">50 min</button><button data-minutes="90">90 min</button></div>
             <div id="focusClock">25:00</div>
@@ -153,7 +154,7 @@
         <div class="shutdown-hero panel">
           <small class="caps">END THE DAY ON PURPOSE</small>
           <h2>Daily Shutdown</h2>
-          <p>Close loops, move what still matters, and decide tomorrow before you leave today.</p>
+          <p>Close loops, then choose tomorrow's 3–5 Must-Wins before you leave today.</p>
           <div class="review-metrics">
             <article><span>Done today</span><b id="shutdownDone">0</b></article>
             <article><span>Still open</span><b id="shutdownOpen">0</b></article>
@@ -164,11 +165,13 @@
         <div class="shutdown-grid">
           <div class="panel"><div class="panelhead"><div><small class="caps">CLOSE LOOPS</small><h3>Still on the table</h3></div></div><div id="shutdownOpenList" class="stack"></div></div>
           <div class="panel">
-            <div class="panelhead"><div><small class="caps">TOMORROW</small><h3>Choose the next 3</h3></div></div>
+            <div class="panelhead"><div><small class="caps">TOMORROW'S SIGNAL</small><h3>Choose 3–5 Must-Wins</h3></div></div>
             <form id="shutdownForm" class="shutdown-form">
-              <input id="shutdown1" placeholder="Tomorrow priority #1">
-              <input id="shutdown2" placeholder="Tomorrow priority #2">
-              <input id="shutdown3" placeholder="Tomorrow priority #3">
+              <input id="shutdown1" placeholder="Must-Win #1">
+              <input id="shutdown2" placeholder="Must-Win #2">
+              <input id="shutdown3" placeholder="Must-Win #3">
+              <input id="shutdown4" placeholder="Must-Win #4 · optional">
+              <input id="shutdown5" placeholder="Must-Win #5 · optional">
               <label class="check shutdown-check"><input id="shutdownRoll" type="checkbox" checked> Move unfinished tasks due today to tomorrow</label>
               <label>Reflection / loose ends<textarea id="shutdownReflection" rows="5" placeholder="Anything you need out of your head before you stop?"></textarea></label>
               <button class="primary">Complete shutdown</button>
@@ -252,7 +255,7 @@
   </div>
 
   <nav class="bottom" aria-label="Primary mobile navigation">
-    <button class="active" data-view="today">⌂<small>Today</small></button>
+    <button class="active" data-view="today">◎<small>Signal</small></button>
     <button data-view="tasks">✓<small>Tasks</small></button>
     <button data-view="planner">▣<small>Plan</small></button>
     <button data-view="board">⊞<small>Board</small></button>
