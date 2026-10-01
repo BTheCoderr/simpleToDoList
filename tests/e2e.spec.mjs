@@ -185,7 +185,6 @@ test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
 });
 
 test("Morning Signal Builder opens once per day and locks selected Must-Wins",async ({page})=>{
-  await page.addInitScript(()=>localStorage.removeItem("cc-signal-builder-day"));
   await page.goto("/?view=tasks");
   await assertAppBooted(page);
   await replaceTasks(page,0);
