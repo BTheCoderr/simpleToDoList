@@ -1,4 +1,4 @@
-var CACHE="command-center-v18";
+var CACHE="command-center-v19";
 var ASSETS=["/","/index.html","/style.css","/app.js","/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/manifest.webmanifest","/icon.svg","/icon-192.png","/icon-512.png","/icon-512-maskable.png","/apple-touch-icon.png"];
 self.addEventListener("install",function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(ASSETS)}));

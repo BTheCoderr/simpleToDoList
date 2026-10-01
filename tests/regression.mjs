@@ -8,7 +8,9 @@ import {
   MAX_DAILY_SIGNAL,
   signalTasks,
   openSignalTasks,
-  noiseTasks
+  noiseTasks,
+  noiseAgeDays,
+  signalHistorySummary
 } from "../public/core.js";
 import {
   APP_VERSION,
@@ -43,9 +45,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 8.0.0",()=>{
-  assert.equal(APP_VERSION,"8.0.0");
-  assert.equal(pkg.version,"8.0.0");
+test("release version is 8.1.0",()=>{
+  assert.equal(APP_VERSION,"8.1.0");
+  assert.equal(pkg.version,"8.1.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, backup, privacy, and exporter modules are imported",()=>{
@@ -91,8 +93,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v18 and caches v8 modules",()=>{
-  assert.match(sw,/command-center-v18/);
+test("service worker cache is v19 and caches v8.1 modules",()=>{
+  assert.match(sw,/command-center-v19/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -205,9 +207,36 @@ test("v8 Signal First is explicit, capped, and schema-free",()=>{
   assert.match(html,/data-filter="signal"/);
   assert.match(html,/data-filter="noise"/);
   assert.match(app,/function toggleSignal/);
-  assert.match(app,/Signal is full: park one of the five first/);
+  assert.match(app,/function openSignalSwap/);
+  assert.match(app,/Something has to leave|signalSwapModal/);
   assert.match(app,/signalDate:due/);
   assert.match(app,/Today's Signal/);
+});
+
+test("v8.1 Signal execution loop covers morning planning history focus-next and aged Noise",()=>{
+  for(const id of ["openSignalBuilder","signalBuilderModal","signalBuilderForm","signalBuilderCandidates","signalBuilderCount","signalSwapModal","signalSwapOptions","focusNextHint","signalHistoryList"]){
+    assert.ok(ids.includes(id),id+" missing");
+  }
+  const legacy=normalizeTask({id:"legacy-signal",title:"Legacy",signalDate:"2026-10-01"});
+  assert.deepEqual(legacy.signalHistory,["2026-10-01"]);
+  assert.equal(legacy.noiseReviewedAt,null);
+  const old=normalizeTask({id:"old-noise",title:"Old",createdAt:"2026-09-01T12:00:00.000Z"});
+  assert.ok(noiseAgeDays(old,new Date("2026-10-01T12:00:00.000Z"))>=29);
+  const history=signalHistorySummary([
+    normalizeTask({id:"a",title:"A",signalHistory:["2026-10-01"],completedAt:"2026-10-01T15:00:00.000Z"}),
+    normalizeTask({id:"b",title:"B",signalHistory:["2026-10-01"],completedAt:null})
+  ],7,new Date("2026-10-01T12:00:00"));
+  assert.deepEqual(history[0],{date:"2026-10-01",chosen:2,done:1,percent:50});
+  assert.match(app,/function openMorningSignalBuilder/);
+  assert.match(app,/cc-signal-builder-day/);
+  assert.match(app,/function completeSignalSwap/);
+  assert.match(app,/function completeFocusedTask/);
+  assert.match(app,/function keepNoise/);
+  assert.match(app,/noise\.kept/);
+  assert.match(html,/Complete & next Signal/);
+  assert.match(html,/SIGNAL HISTORY/);
+  assert.match(html,/Something has to leave/);
+  assert.equal(DB_VERSION,4);
 });
 
 test("v7.1 Saved Views persist status project and tag combinations locally",()=>{

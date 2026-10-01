@@ -6,6 +6,8 @@ test.beforeEach(async ({page})=>{
   await page.addInitScript(()=>{
     localStorage.setItem("cc-onboarded-v1","1");
     localStorage.setItem("cc-theme","dark");
+    const d=new Date(),key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    localStorage.setItem("cc-signal-builder-day",key);
   });
 });
 
@@ -163,12 +165,14 @@ test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
 
   const sixth=page.locator("#taskList .task-row").filter({hasText:"Noise F"}).first();
   await sixth.getByRole("button",{name:/Signal/}).click();
-  await expect(page.locator("#toast")).toContainText("Signal is full");
+  await expect(page.locator("#signalSwapModal")).toHaveAttribute("open","");
+  await expect(page.locator("#signalSwapIncoming")).toHaveText("Noise F");
+  await page.locator("#signalSwapOptions .swap-option").first().click();
 
   await page.goto("/?view=today");
   await expect(page.locator("#sToday")).toHaveText("5/5");
-  await expect(page.locator("#todayTasks")).toContainText("Must Win A");
-  await expect(page.locator("#todayNoise")).toContainText("Noise F");
+  await expect(page.locator("#todayTasks")).toContainText("Noise F");
+  await expect(page.locator("#todayNoise")).toContainText("Must Win A");
 
   const park=page.locator("#todayTasks .task-row").filter({hasText:"Must Win E"}).first();
   await park.getByRole("button",{name:/Park/}).click();
@@ -180,6 +184,97 @@ test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
   await expect(page.locator("#todayNoise")).toContainText("Must Win E");
 });
 
+test("Morning Signal Builder opens once per day and locks selected Must-Wins",async ({page})=>{
+  await page.goto("/?view=tasks");
+  await assertAppBooted(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Morning choice A",priority:"high"});
+  await createTask(page,{title:"Morning choice B",priority:"medium"});
+  await page.addInitScript(()=>{
+    if(!sessionStorage.getItem("cc-force-builder-next")){
+      localStorage.removeItem("cc-signal-builder-day");
+      sessionStorage.setItem("cc-force-builder-next","1");
+    }
+  });
+  await page.reload();
+  await expect(page.locator("#signalBuilderModal")).toHaveAttribute("open","");
+  await expect(page.locator("#signalBuilderCandidates")).toContainText("Morning choice A");
+  const a=page.locator(".signal-builder-item").filter({hasText:"Morning choice A"}).locator("input");
+  const b=page.locator(".signal-builder-item").filter({hasText:"Morning choice B"}).locator("input");
+  await a.check();
+  await b.check();
+  await expect(page.locator("#signalBuilderCount")).toHaveText("2/5");
+  await page.locator("#signalBuilderForm .primary").click();
+  await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
+  await page.goto("/?view=today");
+  await expect(page.locator("#sToday")).toHaveText("2/5");
+  await expect(page.locator("#todayTasks")).toContainText("Morning choice A");
+  await page.reload();
+  await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
+});
+
+test("Focus Complete advances to the next Signal item",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Focus Signal A"});
+  await createTask(page,{title:"Focus Signal B"});
+  for(const title of ["Focus Signal A","Focus Signal B"]){
+    const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
+    await row.locator("[data-signal-task]").click();
+  }
+  await page.goto("/?view=focus");
+  await page.locator("#focusTask").selectOption({label:"Focus Signal A"});
+  await page.locator("#focusComplete").click();
+  await expect(page.locator("#focusTask option:checked")).toHaveText("Focus Signal B");
+  await expect(page.locator("#focusNextHint")).toContainText("Finish this one");
+});
+test("Signal History shows chosen versus completed Must-Wins",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"History A"});
+  await createTask(page,{title:"History B"});
+  for(const title of ["History A","History B"]){
+    const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
+    await row.locator("[data-signal-task]").click();
+  }
+  const done=page.locator("#taskList .task-row").filter({hasText:"History A"}).first();
+  await done.locator(".checkbtn").click();
+  await page.goto("/?view=today");
+  await expect(page.locator("#signalHistoryList")).toContainText("1 of 2 Must-Wins finished");
+  await expect(page.locator("#signalHistoryList")).toContainText("1/2");
+});
+
+test("Noise Aging surfaces stale decisions and Keep resets the age",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Ancient Noise"});
+  await page.evaluate(()=>new Promise((resolve,reject)=>{
+    const request=indexedDB.open("command-center-v2",4);
+    request.onerror=()=>reject(request.error);
+    request.onsuccess=()=>{
+      const db=request.result,tx=db.transaction("tasks","readwrite"),store=tx.objectStore("tasks"),q=store.getAll();
+      q.onsuccess=()=>{
+        const t=q.result.find(x=>x.title==="Ancient Noise");
+        const d=new Date();d.setDate(d.getDate()-40);t.createdAt=d.toISOString();store.put(t);
+      };
+      tx.oncomplete=()=>{db.close();resolve()};
+      tx.onerror=()=>{db.close();reject(tx.error)};
+    };
+  }));
+  await page.reload();
+  await page.goto("/?view=today");
+  const item=page.locator("#todayNoise .noise-item").filter({hasText:"Ancient Noise"});
+  await expect(item).toContainText(/\d+d stale/);
+  await expect(item.getByRole("button",{name:"Keep"})).toBeVisible();
+  await expect(item.getByRole("button",{name:"Archive"})).toBeVisible();
+  await expect(item.getByRole("button",{name:"Trash"})).toBeVisible();
+  await item.getByRole("button",{name:"Keep"}).click();
+  await expect(page.locator("#todayNoise .noise-item").filter({hasText:"Ancient Noise"})).not.toContainText(/stale|waiting|old/);
+});
 test("Signal dashboard visibility and order persist after reload",async ({page})=>{
   await page.goto("/?view=today");
   await assertAppBooted(page);

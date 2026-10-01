@@ -48,7 +48,7 @@
 
       <section id="today" class="view active">
         <div class="hero">
-          <div class="hero-copy"><small id="todayDate" class="caps"></small><h2 id="greeting">Good day.</h2><p><strong>Signal first.</strong> Choose 3–5 Must-Wins that actually need to move today. Everything else is noise until the Signal is handled.</p><div class="signal-doctrine"><span>3–5 Must-Wins</span><span>Finish &gt; bounce</span><span>Noise gets parked</span></div><button id="customizeToday" class="link dashboard-customize" type="button">Customize Signal</button></div>
+          <div class="hero-copy"><small id="todayDate" class="caps"></small><h2 id="greeting">Good day.</h2><p><strong>Signal first.</strong> Choose 3–5 Must-Wins that actually need to move today. Everything else is noise until the Signal is handled.</p><div class="signal-doctrine"><span>3–5 Must-Wins</span><span>Finish &gt; bounce</span><span>Noise gets parked</span></div><div class="hero-signal-actions"><button id="openSignalBuilder" class="primary" type="button">Build today’s Signal</button><button id="customizeToday" class="link dashboard-customize" type="button">Customize Signal</button></div></div>
           <div class="stats">
             <article><span>Signal</span><b id="sToday">0/5</b><small>chosen Must-Wins</small></article>
             <article><span>Signal done</span><b id="sSignalDone">0</b><small>finished today</small></article>
@@ -62,6 +62,10 @@
           <div class="panel" data-dashboard-card="habits"><div class="panelhead"><div><small class="caps">MOMENTUM</small><h3>Habits</h3></div></div><div id="todayHabits" class="stack"></div></div>
           <div class="panel" data-dashboard-card="projects"><div class="panelhead"><div><small class="caps">PROGRESS</small><h3>Projects</h3></div></div><div id="todayProjects" class="stack"></div></div>
           <div class="panel wide" data-dashboard-card="capture"><div class="panelhead"><div><small class="caps">CAPTURE WITHOUT DISTRACTION</small><h3>Quick inbox</h3></div><button id="quickHelp" class="link" type="button">Syntax</button></div><form id="captureForm" class="capture"><input id="capture" autocomplete="off" placeholder="Capture it here — promote it only if it becomes Signal"><button class="primary">Park it</button></form><small class="hint">New captures stay outside today's Signal until you deliberately promote them.</small></div>
+        </div>
+        <div class="panel signal-history-panel">
+          <div class="panelhead"><div><small class="caps">SIGNAL HISTORY</small><h3>What you said mattered</h3></div><small>Last 7 days</small></div>
+          <div id="signalHistoryList" class="signal-history-list"></div>
         </div>
       </section>
 
@@ -120,10 +124,11 @@
             <h2>Focus Mode</h2>
             <p id="focusStatusText">Pick one Must-Win. Noise can wait.</p>
             <select id="focusTask"></select>
+            <small id="focusNextHint" class="focus-next-hint">No open Signal remains.</small>
             <div class="focus-presets"><button data-minutes="25">25 min</button><button data-minutes="50">50 min</button><button data-minutes="90">90 min</button></div>
             <div id="focusClock">25:00</div>
             <div class="focus-actions"><button id="focusStart" class="primary">Start focus</button><button id="focusPause">Pause</button><button id="focusReset">Reset</button></div>
-            <button id="focusComplete" class="successbtn">✓ Complete task</button>
+            <button id="focusComplete" class="successbtn">✓ Complete & next Signal</button>
           </div>
           <div class="panel focus-side"><small class="caps">TODAY</small><h3>Focus history</h3><div id="focusHistory" class="stack"></div></div>
         </div>
@@ -406,6 +411,25 @@
       <button class="primary">Unlock</button>
     </form>
   </div>
+
+  <dialog id="signalBuilderModal">
+    <form id="signalBuilderForm" class="modal signal-builder-modal">
+      <div class="modalhead"><div><small class="caps">MORNING SIGNAL</small><h2>Choose today’s 3–5 Must-Wins</h2></div><button type="button" id="signalBuilderSkip" class="icon" aria-label="Skip morning Signal">×</button></div>
+      <p>Review yesterday’s unfinished Signal, overdue work, and active priorities. You decide what earns attention today.</p>
+      <div class="signal-builder-counter"><span>Selected</span><b id="signalBuilderCount">0/5</b></div>
+      <div id="signalBuilderCandidates" class="signal-builder-candidates"></div>
+      <div class="modalactions"><button type="button" id="signalBuilderSkipBottom">Skip today</button><span></span><span></span><button class="primary">Lock today’s Signal</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="signalSwapModal">
+    <div class="modal signal-swap-modal">
+      <div class="modalhead"><div><small class="caps">SIGNAL IS FULL</small><h2>Something has to leave</h2></div><button type="button" data-close="signalSwapModal" class="icon" aria-label="Close">×</button></div>
+      <p><strong id="signalSwapIncoming"></strong> can enter Signal only if you park one unfinished Must-Win.</p>
+      <div id="signalSwapOptions" class="signal-swap-options"></div>
+      <div class="modalactions"><span></span><span></span><span></span><button type="button" data-close="signalSwapModal">Keep current Signal</button></div>
+    </div>
+  </dialog>
 
   <dialog id="onboardingModal" class="onboarding-dialog">
     <div class="onboarding">

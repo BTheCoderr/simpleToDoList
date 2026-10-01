@@ -1,5 +1,15 @@
 # Changelog
 
+## 8.1.0 — Lock In Loop
+
+- Added a guided Morning Signal Builder that surfaces unfinished prior Signal, overdue work, in-progress tasks, and high-priority candidates.
+- Replaced the hard-stop at five Signal items with a forced swap flow: a new Must-Win can enter only when an unfinished Signal item is parked.
+- Added **Complete & next Signal** behavior in Focus Mode.
+- Added a rolling 7-day Signal History showing chosen vs. finished Must-Wins.
+- Added Noise Aging at 7, 14, and 30 days with explicit **Keep**, **Archive**, **Trash**, or **Promote** decisions.
+- Added schema-free `signalHistory` and `noiseReviewedAt` task metadata while keeping IndexedDB schema v4.
+- Bumped the offline PWA cache to `command-center-v19`.
+
 ## 8.0.0 — Signal First
 
 - Recentered Command Center around a daily **Signal** instead of an automatically inferred urgency list.
