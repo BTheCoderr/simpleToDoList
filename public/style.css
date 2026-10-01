@@ -148,6 +148,10 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 
 .daily-intent-banner{align-items:flex-start;flex-direction:column}.daily-intent-banner button{width:100%}
 .lockin-topbar{padding:calc(14px + env(safe-area-inset-top)) 16px 14px}.lockin-main{width:calc(100% - 28px);padding:28px 0 calc(28px + env(safe-area-inset-bottom));gap:14px}.lockin-main h2{font-size:clamp(38px,12vw,58px)}.lockin-clock{font-size:clamp(72px,23vw,104px)}.lockin-actions{grid-template-columns:1fr 1fr}.lockin-capture{grid-template-columns:1fr}.lockin-capture button{width:100%}.alignment-groups{grid-template-columns:1fr}.signal-clear{min-height:70dvh;border-radius:24px 24px 0 0;padding:46px 22px calc(34px + env(safe-area-inset-bottom))}.signal-clear-actions{display:grid;width:100%}.signal-clear-actions button{width:100%}
+
+#review .alignment-panel,#review .weekly-alignment,#review .alignment-groups,#review .alignment-groups>div,#review .alignment-row{min-width:0;max-width:100%}
+#review .alignment-groups{grid-template-columns:minmax(0,1fr)}
+#review .alignment-summary{min-width:0;flex-wrap:wrap}
 }
 
 /* Production update notice */
