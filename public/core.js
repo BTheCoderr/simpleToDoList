@@ -17,8 +17,16 @@ export function normalizeTask(task){
     archivedAt:null,
     deletedAt:null,
     boardOrder:null,
-    signalDate:""
-  },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[],repeatWeekdays:Array.isArray(task.repeatWeekdays)?Array.from(new Set(task.repeatWeekdays.map(Number).filter(day=>day>=0&&day<=6))).sort((a,b)=>a-b):[]});
+    signalDate:"",
+    signalHistory:[],
+    noiseReviewedAt:null
+  },task,{
+    subtasks:Array.isArray(task.subtasks)?task.subtasks:[],
+    tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[],
+    repeatWeekdays:Array.isArray(task.repeatWeekdays)?Array.from(new Set(task.repeatWeekdays.map(Number).filter(day=>day>=0&&day<=6))).sort((a,b)=>a-b):[],
+    signalHistory:Array.from(new Set((Array.isArray(task.signalHistory)?task.signalHistory:[]).concat(task.signalDate?[task.signalDate]:[]).filter(Boolean))).sort(),
+    noiseReviewedAt:task.noiseReviewedAt||null
+  });
 }
 
 export function dateKey(date){
@@ -44,6 +52,32 @@ export function openSignalTasks(tasks,date=today()){
 
 export function noiseTasks(tasks,date=today()){
   return (tasks||[]).filter(task=>task&&!task.deletedAt&&!task.archivedAt&&task.status!=="done"&&task.signalDate!==date);
+}
+
+export function noiseAgeDays(task,now=new Date()){
+  if(!task)return 0;
+  const raw=task.noiseReviewedAt||task.createdAt;
+  const base=raw?new Date(raw):now;
+  const diff=now.getTime()-base.getTime();
+  return Math.max(0,Math.floor(diff/86400000));
+}
+
+export function signalHistorySummary(tasks,days=7,now=new Date()){
+  const output=[];
+  for(let offset=0;offset<days;offset++){
+    const date=new Date(now);
+    date.setHours(12,0,0,0);
+    date.setDate(date.getDate()-offset);
+    const key=dateKey(date);
+    const chosen=(tasks||[]).filter(task=>Array.isArray(task.signalHistory)&&task.signalHistory.includes(key));
+    if(!chosen.length)continue;
+    const done=chosen.filter(task=>{
+      if(!task.completedAt)return false;
+      return String(task.completedAt).slice(0,10)<=key;
+    }).length;
+    output.push({date:key,chosen:chosen.length,done,percent:Math.round(done/chosen.length*100)});
+  }
+  return output;
 }
 
 export function addDays(date,count){
