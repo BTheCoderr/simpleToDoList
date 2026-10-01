@@ -191,7 +191,12 @@ test("Morning Signal Builder opens once per day and locks selected Must-Wins",as
   await page.reload();
   await createTask(page,{title:"Morning choice A",priority:"high"});
   await createTask(page,{title:"Morning choice B",priority:"medium"});
-  await page.evaluate(()=>localStorage.removeItem("cc-signal-builder-day"));
+  await page.addInitScript(()=>{
+    if(!sessionStorage.getItem("cc-force-builder-next")){
+      localStorage.removeItem("cc-signal-builder-day");
+      sessionStorage.setItem("cc-force-builder-next","1");
+    }
+  });
   await page.reload();
   await expect(page.locator("#signalBuilderModal")).toHaveAttribute("open","");
   await expect(page.locator("#signalBuilderCandidates")).toContainText("Morning choice A");
@@ -217,7 +222,7 @@ test("Focus Complete advances to the next Signal item",async ({page})=>{
   await createTask(page,{title:"Focus Signal B"});
   for(const title of ["Focus Signal A","Focus Signal B"]){
     const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
-    await row.getByRole("button",{name:/Signal/}).click();
+    await row.locator("[data-signal-task]").click();
   }
   await page.goto("/?view=focus");
   await page.locator("#focusTask").selectOption({label:"Focus Signal A"});
@@ -233,7 +238,7 @@ test("Signal History shows chosen versus completed Must-Wins",async ({page})=>{
   await createTask(page,{title:"History B"});
   for(const title of ["History A","History B"]){
     const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
-    await row.getByRole("button",{name:/Signal/}).click();
+    await row.locator("[data-signal-task]").click();
   }
   const done=page.locator("#taskList .task-row").filter({hasText:"History A"}).first();
   await done.locator(".checkbtn").click();
