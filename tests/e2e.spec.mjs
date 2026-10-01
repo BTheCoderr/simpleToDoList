@@ -150,6 +150,8 @@ test("tags filter tasks and bulk actions update the selected set",async ({page})
 
 test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
   await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
   for(const title of ["Must Win A","Must Win B","Must Win C","Must Win D","Must Win E","Noise F"]){
     await createTask(page,{title});
   }
@@ -184,6 +186,7 @@ test("Signal dashboard visibility and order persist after reload",async ({page})
   await page.locator("#customizeToday").click();
   await page.locator('[data-dashboard-visible="habits"]').uncheck();
   const moveCaptureUp=page.locator('[data-dashboard-move="capture"][data-direction="-1"]');
+  await moveCaptureUp.click();
   await moveCaptureUp.click();
   await moveCaptureUp.click();
   await moveCaptureUp.click();
