@@ -4,7 +4,11 @@ import {
   normalizeTask,
   nextOccurrence,
   parseQuick,
-  goalProgress
+  goalProgress,
+  MAX_DAILY_SIGNAL,
+  signalTasks,
+  openSignalTasks,
+  noiseTasks
 } from "../public/core.js";
 import {
   APP_VERSION,
@@ -39,9 +43,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 7.3.0",()=>{
-  assert.equal(APP_VERSION,"7.3.0");
-  assert.equal(pkg.version,"7.3.0");
+test("release version is 8.0.0",()=>{
+  assert.equal(APP_VERSION,"8.0.0");
+  assert.equal(pkg.version,"8.0.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, backup, privacy, and exporter modules are imported",()=>{
@@ -87,8 +91,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v17 and caches v7.3 modules",()=>{
-  assert.match(sw,/command-center-v17/);
+test("service worker cache is v18 and caches v8 modules",()=>{
+  assert.match(sw,/command-center-v18/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -171,14 +175,39 @@ test("v7 task power-user controls are present",()=>{
   assert.match(app,/function bulkTrash/);
   assert.match(app,/tagPills/);
 });
-test("Today dashboard customization is local and schema-free",()=>{
+test("Signal dashboard customization is local and schema-free",()=>{
   for(const id of ["customizeToday","dashboardModal","dashboardOptions","dashboardForm","resetDashboard"]){
     assert.ok(ids.includes(id),id+" missing");
   }
-  assert.equal((html.match(/data-dashboard-card=/g)||[]).length,4);
+  assert.equal((html.match(/data-dashboard-card=/g)||[]).length,5);
   assert.match(app,/cc-today-layout-v1/);
   assert.match(app,/function applyDashboardLayout/);
   assert.match(app,/function moveDashboardCard/);
+});
+
+
+test("v8 Signal First is explicit, capped, and schema-free",()=>{
+  assert.equal(MAX_DAILY_SIGNAL,5);
+  const tasks=[
+    normalizeTask({id:"s1",title:"Signal one",status:"next",signalDate:"2026-10-01"}),
+    normalizeTask({id:"s2",title:"Signal done",status:"done",signalDate:"2026-10-01"}),
+    normalizeTask({id:"n1",title:"Noise",status:"next",signalDate:""}),
+    normalizeTask({id:"old",title:"Yesterday",status:"next",signalDate:"2026-09-30"})
+  ];
+  assert.deepEqual(signalTasks(tasks,"2026-10-01").map(t=>t.id),["s1","s2"]);
+  assert.deepEqual(openSignalTasks(tasks,"2026-10-01").map(t=>t.id),["s1"]);
+  assert.deepEqual(noiseTasks(tasks,"2026-10-01").map(t=>t.id),["n1","old"]);
+  assert.equal(normalizeTask({id:"legacy",title:"Legacy"}).signalDate,"");
+  assert.equal(DB_VERSION,4);
+  for(const id of ["sSignalDone","sNoise","todayNoise","shutdown4","shutdown5"])assert.ok(ids.includes(id),id+" missing");
+  assert.match(html,/3–5 Must-Wins/);
+  assert.match(html,/NOISE PARKING LOT/);
+  assert.match(html,/data-filter="signal"/);
+  assert.match(html,/data-filter="noise"/);
+  assert.match(app,/function toggleSignal/);
+  assert.match(app,/Signal is full: park one of the five first/);
+  assert.match(app,/signalDate:due/);
+  assert.match(app,/Today's Signal/);
 });
 
 test("v7.1 Saved Views persist status project and tag combinations locally",()=>{
