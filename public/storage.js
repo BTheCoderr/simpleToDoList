@@ -6,6 +6,14 @@ export const DATA_STORES=["tasks","projects","notes","habits","activity","templa
 export const MAX_SNAPSHOT_BYTES=4*1024*1024;
 export const MAX_SNAPSHOTS=7;
 
+function signalWrite(){
+  try{
+    if(typeof localStorage!=="undefined"){
+      localStorage.setItem("cc-data-revision",Date.now()+"-"+Math.random().toString(36).slice(2));
+    }
+  }catch(e){}
+}
+
 export const MIGRATIONS={
   1:["tasks","projects","notes","habits","activity"],
   2:["templates"],
@@ -67,7 +75,7 @@ export function save(store,value){
   return openDB().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(store,"readwrite");
     tx.objectStore(store).put(value);
-    tx.oncomplete=()=>{db.close();resolve()};
+    tx.oncomplete=()=>{db.close();signalWrite();resolve()};
     tx.onerror=()=>{db.close();reject(tx.error)};
   }));
 }
@@ -78,8 +86,22 @@ export function saveMany(store,values){
     const tx=db.transaction(store,"readwrite");
     const objectStore=tx.objectStore(store);
     values.forEach(value=>objectStore.put(value));
-    tx.oncomplete=()=>{db.close();resolve()};
+    tx.oncomplete=()=>{db.close();signalWrite();resolve()};
     tx.onerror=()=>{db.close();reject(tx.error)};
+  }));
+}
+
+export function replaceStores(data,names=DATA_STORES){
+  return openDB().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(names,"readwrite");
+    names.forEach(name=>{
+      const objectStore=tx.objectStore(name);
+      objectStore.clear();
+      (data[name]||[]).forEach(value=>objectStore.put(value));
+    });
+    tx.oncomplete=()=>{db.close();signalWrite();resolve()};
+    tx.onerror=()=>{const error=tx.error;db.close();reject(error)};
+    tx.onabort=()=>{const error=tx.error||new Error("Workspace replacement aborted");db.close();reject(error)};
   }));
 }
 
@@ -87,7 +109,7 @@ export function del(store,id){
   return openDB().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(store,"readwrite");
     tx.objectStore(store).delete(id);
-    tx.oncomplete=()=>{db.close();resolve()};
+    tx.oncomplete=()=>{db.close();signalWrite();resolve()};
     tx.onerror=()=>{db.close();reject(tx.error)};
   }));
 }
@@ -96,7 +118,7 @@ export function clear(store){
   return openDB().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(store,"readwrite");
     tx.objectStore(store).clear();
-    tx.oncomplete=()=>{db.close();resolve()};
+    tx.oncomplete=()=>{db.close();signalWrite();resolve()};
     tx.onerror=()=>{db.close();reject(tx.error)};
   }));
 }
