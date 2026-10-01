@@ -232,6 +232,39 @@ test("Focus Complete advances to the next Signal item",async ({page})=>{
   await expect(page.locator("#focusTask option:checked")).toHaveText("Focus Signal B");
   await expect(page.locator("#focusNextHint")).toContainText("Finish this one");
 });
+test("Lock-In keeps one Must-Win visible, parks distractions, and ends in Signal Clear",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Lock-In Must Win",project:"Win the Week"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Lock-In Must Win"}).first();
+  await row.locator("[data-signal-task]").click();
+
+  await page.goto("/?view=today");
+  await page.locator("#lockInFromToday").click();
+  await expect(page.locator("#lockInModal")).toHaveAttribute("open","");
+  await expect(page.locator("#lockInTitle")).toHaveText("Lock-In Must Win");
+  await expect(page.locator("#lockInMeta")).toContainText("Win the Week");
+
+  await page.locator("#lockInCapture").fill("Remember invoice");
+  await page.locator("#lockInCaptureForm").getByRole("button",{name:"Park thought"}).click();
+  await expect(page.locator("#lockInModal")).toHaveAttribute("open","");
+  await expect.poll(async ()=>{
+    const tasks=await getAll(page,"tasks");
+    const distraction=tasks.find(t=>t.title==="Remember invoice");
+    return distraction?{status:distraction.status,signalDate:distraction.signalDate||""}:null;
+  }).toEqual({status:"inbox",signalDate:""});
+
+  await page.locator("#lockInComplete").click();
+  await expect(page.locator("#lockInModal")).not.toHaveAttribute("open","");
+  await expect(page.locator("#signalClearModal")).toHaveAttribute("open","");
+  await expect(page.locator("#signalClearScore")).toHaveText("1 / 1");
+  await page.locator("#signalClearNoise").click();
+  await expect(page.locator("#tasks")).toHaveClass(/active/);
+  await expect(page.locator('[data-filter="noise"]')).toHaveClass(/active/);
+  await expect(page.locator("#taskList")).toContainText("Remember invoice");
+});
+
 test("Signal History shows chosen versus completed Must-Wins",async ({page})=>{
   await openTasks(page);
   await replaceTasks(page,0);
