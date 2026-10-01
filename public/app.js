@@ -458,7 +458,9 @@ async function saveTask(e){
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
-  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,t.status==="done"?"next":"done");await load()
+  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;var completing=t.status!=="done",wasSignal=t.signalDate===today();
+  await setTaskStatus(t,completing?"done":"next");await load();
+  if(completing&&wasSignal&&!openSignalTasks(activeTasks(),today()).length)showSignalClear();
 }
 function renderSignalSwap(incoming){
   var current=openSignalTasks(activeTasks(),today());
@@ -652,7 +654,7 @@ async function captureLockInDistraction(e){
 async function finishFocus(){
   var task=state.tasks.find(function(t){return t.id===state.focus.taskId}),minutes=state.focus.minutes;
   if(task)await log("focus.completed",task.title,{minutes:minutes});
-  state.focus={taskId:state.focus.taskId,minutes:minutes,remaining:minutes*60,running:false,endAt:null};persistFocus();clearInterval(focusTimer);focusTimer=null;await load();toast("Focus session complete")
+  state.focus={taskId:state.focus.taskId,minutes:minutes,remaining:minutes*60,running:false,endAt:null};persistFocus();clearInterval(focusTimer);focusTimer=null;await load();if(lockInActive)renderLockIn();toast("Focus session complete")
 }
 function tickFocus(){
   if(!state.focus||!state.focus.running)return;
