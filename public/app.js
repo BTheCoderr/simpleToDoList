@@ -928,9 +928,9 @@ document.addEventListener("click",async function(e){
 document.addEventListener("change",function(e){
   var builder=e.target.closest&&e.target.closest("[data-signal-builder-task]");
   if(builder){
-    var checked=$("[data-signal-builder-task]:checked");
+    var checked=$$("[data-signal-builder-task]:checked");
     if(checked.length>MAX_DAILY_SIGNAL){builder.checked=false;toast("Signal can hold five Must-Wins max")}
-    $("signalBuilderCount").textContent=$("[data-signal-builder-task]:checked").length+"/"+MAX_DAILY_SIGNAL;
+    $("signalBuilderCount").textContent=$$("[data-signal-builder-task]:checked").length+"/"+MAX_DAILY_SIGNAL;
     return;
   }
   var select=e.target.closest&&e.target.closest("[data-select-task]");
