@@ -266,7 +266,11 @@ test("Planner month week day modes persist and drag rescheduling updates dates",
   const target=page.locator("[data-planner-date]").last();
   const targetDate=await target.getAttribute("data-planner-date");
   expect(targetDate).toMatch(/^20\\d{2}-\\d{2}-\\d{2}$/);
-  await source.dragTo(target);
+  const dataTransfer=await page.evaluateHandle(()=>new DataTransfer());
+  await source.dispatchEvent("dragstart",{dataTransfer});
+  await target.dispatchEvent("dragover",{dataTransfer});
+  await target.dispatchEvent("drop",{dataTransfer});
+  await dataTransfer.dispose();
 
   await expect.poll(async ()=>{
     const tasks=await getAll(page,"tasks");
