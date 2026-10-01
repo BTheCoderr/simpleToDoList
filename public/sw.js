@@ -1,4 +1,4 @@
-var CACHE="command-center-v16";
+var CACHE="command-center-v17";
 var ASSETS=["/","/index.html","/style.css","/app.js","/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/manifest.webmanifest","/icon.svg","/icon-192.png","/icon-512.png","/icon-512-maskable.png","/apple-touch-icon.png"];
 self.addEventListener("install",function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(ASSETS)}));
@@ -17,8 +17,9 @@ self.addEventListener("fetch",function(e){
   if(request.method!=="GET")return;
   var url=new URL(request.url);
   if(url.origin!==self.location.origin)return;
+  var privateShare=url.searchParams.get("share")==="1";
   e.respondWith(fetch(request).then(function(r){
-    if(r&&r.status===200){
+    if(r&&r.status===200&&!privateShare){
       var copy=r.clone();
       caches.open(CACHE).then(function(c){c.put(request,copy)});
     }
