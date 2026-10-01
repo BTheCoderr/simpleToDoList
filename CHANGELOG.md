@@ -1,5 +1,18 @@
 # Changelog
 
+## 8.0.0 — Signal First
+
+- Recentered Command Center around a daily **Signal** instead of an automatically inferred urgency list.
+- Added an explicit 3–5 Must-Win workflow with a hard maximum of 5 Signal tasks per day.
+- Added one-tap **Promote to Signal** and **Park as Noise** actions.
+- Added a Noise Parking Lot to the main dashboard so captured work stays visible without competing for today's attention.
+- Changed Focus Mode to present today's Signal first and visually separate non-Signal work.
+- Changed Daily Shutdown to choose up to 5 Must-Wins and stamp them as tomorrow's Signal.
+- Weekly top priorities now seed the next Monday Signal.
+- Added Signal / Noise task filters and Signal-aware task ordering.
+- Kept IndexedDB at schema v4; `signalDate` is stored directly on task records and normalizes safely for existing workspaces.
+- Bumped the offline PWA cache to `command-center-v18`.
+
 ## 7.3.0 — Local-Only Polish
 
 - Added searchable/filterable Activity History.
