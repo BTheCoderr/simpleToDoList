@@ -21,7 +21,7 @@
 <!-- repo-intro:start -->
 **Project snapshot:** Command Center is a private, local-first personal productivity system that evolved from a simple to-do list into an installable PWA with planning, focus, goals, habits, review workflows, recovery tools, privacy controls, exports, and browser QA.
 
-**Current product:** v8.0 · Signal First · browser-native JavaScript · IndexedDB schema v4 · installable/offline PWA · no account service · no cloud database.
+**Current product:** v8.1 · Signal First · browser-native JavaScript · IndexedDB schema v4 · installable/offline PWA · no account service · no cloud database.
 
 **What it demonstrates:** JavaScript · IndexedDB · PWA/offline architecture · Playwright E2E · local-first product design · progressive enhancement · release hardening.
 <!-- repo-intro:end -->
@@ -39,9 +39,13 @@ Command Center is built around a stricter loop: **choose Signal → focus → fi
 
 - explicit daily **Signal** of 3–5 Must-Wins
 - hard cap of 5 Signal items to prevent priority inflation
+- guided **Morning Signal Builder** for the first daily check-in
 - one-tap **Promote to Signal** / **Park as Noise** controls
+- forced **swap-at-5** when Signal is full instead of silent priority inflation
 - Noise parking lot on the main dashboard
-- Focus Mode groups today's Signal before all other open work
+- Focus Mode groups today's Signal before all other open work and advances to the next Must-Win after completion
+- 7-day Signal History shows what was chosen and what actually got finished
+- Noise Aging surfaces 7 / 14 / 30-day stale work with keep, archive, trash, or promote decisions
 - Daily Shutdown creates tomorrow's Signal
 - Weekly planning can pre-seed Monday's Signal
 
@@ -126,7 +130,7 @@ Command Center is a real installable Progressive Web App, not just a mobile-shap
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG icons
 - 512×512 maskable icon
-- offline cache `command-center-v18`
+- offline cache `command-center-v19`
 - offline navigation/deep-link fallback
 - Web Share Target
 - browser install prompt where supported
