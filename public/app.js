@@ -10,6 +10,7 @@ import {
   readStores,
   save,
   saveMany,
+  replaceStores,
   del,
   clear
 } from "./storage.js";
@@ -25,8 +26,10 @@ import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backu
 import { createPrivacyCredential, verifyPrivacyCode } from "./privacy.js";
 import { tasksToCsv, workspaceToMarkdown } from "./exporters.js";
 
-const SW_CACHE="command-center-v16";
+const SW_CACHE="command-center-v17";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),plannerMode:localStorage.getItem("cc-planner-mode")||"month",focus:null};
+var VALID_VIEWS=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","history","settings"];
+if(!VALID_VIEWS.includes(state.view))state.view="today";
 var editingSubtasks=[];
 var focusTimer=null;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -36,6 +39,7 @@ function dialogFocusables(dialog){
 }
 function openDialog(dialog){
   if(!dialog||dialog.open)return;
+  if(privacyEnabled()&&!privacyUnlocked())return;
   var current=document.activeElement;if(current&&current!==document.body)dialogReturnFocus.set(dialog,current);
   dialog.showModal();
   requestAnimationFrame(function(){
@@ -67,7 +71,7 @@ var builtInTemplates=[
 
 function uid(p){return p+"-"+Date.now()+"-"+Math.random().toString(36).slice(2,7)}
 async function seed(){var data=await readStores(["tasks","projects","notes","habits"]),count=data.tasks.length+data.projects.length+data.notes.length+data.habits.length;if(count)return;for(var k of ["projects","tasks","notes","habits"])await saveMany(k,defaults[k])}
-async function load(){await seed();var data=await readStores(STORES);state.tasks=(data.tasks||[]).map(normalizeTask);state._active=state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt});state.projects=(data.projects||[]).map(function(p){return Object.assign({goalId:""},p)});state.notes=data.notes||[];state.habits=data.habits||[];state.activity=data.activity||[];state.templates=data.templates||[];state.goals=data.goals||[];state.snapshots=data.snapshots||[];render()}
+async function load(){await seed();var data=await readStores(STORES);state.tasks=(data.tasks||[]).map(normalizeTask);state._active=state.tasks.filter(function(t){return !t.deletedAt&&!t.archivedAt});state.projects=(data.projects||[]).map(function(p){return Object.assign({goalId:""},p)});state.notes=data.notes||[];state.habits=data.habits||[];state.activity=data.activity||[];state.templates=data.templates||[];state.goals=data.goals||[];state.snapshots=data.snapshots||[];if(!privacyEnabled()||privacyUnlocked())render()}
 function activeTasks(){return state._active||[]}
 function esc(v){return String(v||"").replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]})}
 function pname(id){var p=state.projects.find(function(x){return x.id===id});return p?p.name:""}
@@ -275,7 +279,7 @@ function renderToday(){
   $("todayHabits").innerHTML=state.habits.length?state.habits.slice(0,5).map(habitHTML).join(""):'<div class="empty">Add a habit.</div>';
   $("todayProjects").innerHTML=state.projects.slice(0,5).map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<div class="mini"><b>'+esc(p.name)+'</b><small>'+d+'/'+a.length+' tasks complete</small><div class="progress"><i style="width:'+pc+'%"></i></div></div>'}).join("")||'<div class="empty">No projects yet.</div>';applyDashboardLayout();
 }
-function renderProjects(){$("projectGrid").innerHTML=state.projects.map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0,goal=gname(p.goalId);return'<article class="card"><small class="caps">'+esc(p.area||"PROJECT")+'</small><h3>'+esc(p.name)+'</h3>'+(goal?'<span class="goal-chip">◎ '+esc(goal)+'</span>':'')+'<p>'+a.length+' tasks · '+pc+'% complete</p><footer><div class="progress"><i style="width:'+pc+'%"></i></div><div class="row"><button data-project-task="'+p.id+'" class="primary">＋ Task</button><button data-focus-project="'+p.id+'" class="link">View tasks</button><button data-delete-project="'+p.id+'">Delete</button></div></footer></article>'}).join("")||'<div class="empty">Create a project for an outcome that takes more than one task.</div>'}
+function renderProjects(){$("projectGrid").innerHTML=state.projects.map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0,goal=gname(p.goalId);return'<article class="card"><small class="caps">'+esc(p.area||"PROJECT")+'</small><h3>'+esc(p.name)+'</h3>'+(goal?'<span class="goal-chip">◎ '+esc(goal)+'</span>':'')+'<p>'+a.length+' tasks · '+pc+'% complete</p><footer><div class="progress"><i style="width:'+pc+'%"></i></div><div class="row"><button data-project-task="'+p.id+'" class="primary">＋ Task</button><button data-focus-project="'+p.id+'" class="link">View tasks</button><button data-edit-project="'+p.id+'">Edit</button><button data-delete-project="'+p.id+'">Delete</button></div></footer></article>'}).join("")||'<div class="empty">Create a project for an outcome that takes more than one task.</div>'}
 function renderNotes(){$("noteGrid").innerHTML=state.notes.slice().sort(function(a,b){return Number(b.pinned)-Number(a.pinned)}).map(function(n){return'<article class="card note" data-edit-note="'+n.id+'"><small class="caps">'+(n.pinned?"PINNED NOTE":"NOTE")+'</small><h3>'+esc(n.title)+'</h3><p>'+esc(n.body||"Empty note")+'</p><small>'+new Date(n.updatedAt).toLocaleDateString()+'</small></article>'}).join("")||'<div class="empty">Your thinking space is empty.</div>'}
 function renderHabits(){$("habitList").innerHTML=state.habits.map(habitHTML).join("")||'<div class="empty">Start with one tiny habit.</div>'}
 
@@ -459,7 +463,7 @@ function downloadText(filename,text,type){
   var blob=new Blob([text],{type:type||"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");
   link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url)},0);
 }
-async function exportTasksCsv(){downloadText("command-center-tasks-"+today()+".csv",tasksToCsv(state.tasks,state.projects),"text/csv;charset=utf-8");await log("export.csv","Tasks CSV",{count:state.tasks.length});toast("Tasks CSV exported")}
+async function exportTasksCsv(){downloadText("command-center-tasks-"+today()+".csv","\uFEFF"+tasksToCsv(state.tasks,state.projects),"text/csv;charset=utf-8");await log("export.csv","Tasks CSV",{count:state.tasks.length});toast("Tasks CSV exported")}
 async function exportWorkspaceMarkdown(){downloadText("command-center-workspace-"+today()+".md",workspaceToMarkdown(state),"text/markdown;charset=utf-8");await log("export.markdown","Workspace Markdown",{tasks:state.tasks.length,projects:state.projects.length});toast("Workspace Markdown exported")}
 
 var PRIVACY_KEY="cc-privacy-lock-v1",PRIVACY_SESSION="cc-privacy-unlocked-v1";
@@ -481,9 +485,11 @@ async function savePrivacySetup(e){
   $("privacySetupModal").close();await log(wasEnabled?"privacy.changed":"privacy.enabled","Local privacy lock");await load();renderPrivacySettings();toast(wasEnabled?"Privacy code changed":"Privacy lock enabled")
 }
 function showPrivacyLock(){
-  if(!privacyEnabled())return;sessionStorage.removeItem(PRIVACY_SESSION);$("privacyUnlockForm").reset();$("privacyUnlockError").textContent="";$("privacyLockScreen").classList.remove("hidden");document.body.classList.add("privacy-locked");setTimeout(function(){$("privacyUnlockCode").focus()},20)
+  if(!privacyEnabled())return;
+  $$("dialog[open]").forEach(function(dialog){dialog.close()});
+  sessionStorage.removeItem(PRIVACY_SESSION);$("privacyUnlockForm").reset();$("privacyUnlockError").textContent="";$("privacyLockScreen").classList.remove("hidden");document.body.classList.add("privacy-locked");setTimeout(function(){$("privacyUnlockCode").focus()},20)
 }
-function hidePrivacyLock(){sessionStorage.setItem(PRIVACY_SESSION,"1");$("privacyLockScreen").classList.add("hidden");document.body.classList.remove("privacy-locked")}
+function hidePrivacyLock(){sessionStorage.setItem(PRIVACY_SESSION,"1");$("privacyLockScreen").classList.add("hidden");document.body.classList.remove("privacy-locked");render();handleStartupIntent()}
 async function unlockPrivacy(e){
   e.preventDefault();var ok=await verifyPrivacyCode($("privacyUnlockCode").value,privacyCredential());
   if(!ok){$("privacyUnlockError").textContent="Incorrect code.";return}
@@ -504,7 +510,7 @@ async function importAll(file){
     if(!confirm("Replace all local data with this validated backup?"))return;
     var guard=await createSnapshot("Before JSON import");
     if(!guard&&!confirm("A recovery snapshot could not be created. Continue with import anyway?"))return;
-    for(var s of DATA_STORES){await clear(s);await saveMany(s,check.data[s]||[])}
+    await replaceStores(check.data,DATA_STORES);
     await log("backup.imported","JSON backup",{version:check.version});await load();toast("Backup restored");
   }catch(e){console.error(e);alert("Could not import that JSON backup. No data was changed.")}
 }
@@ -555,7 +561,9 @@ function renderSnapshots(){
 async function restoreSnapshot(id){
   var shot=state.snapshots.find(function(s){return s.id===id});if(!shot||!confirm("Restore this snapshot? Current data will be replaced."))return;
   var guard=await createSnapshot("Before snapshot restore");if(!guard&&!confirm("A recovery snapshot could not be created. Continue anyway?"))return;
-  for(var s of DATA_STORES){await clear(s);await saveMany(s,shot.data[s]||[])}
+  var check=validateBackupPayload(Object.assign({version:BACKUP_VERSION},shot.data||{}));
+  if(!check.ok){alert("This recovery snapshot is invalid and was not restored. "+check.error);return}
+  await replaceStores(check.data,DATA_STORES);
   await log("snapshot.restored",shot.reason||"Snapshot",{snapshotId:id});await load();toast("Snapshot restored");
 }
 async function ensureDailySnapshot(){
@@ -743,16 +751,18 @@ async function runDiagnostics(){
   box.innerHTML=checks.map(function(c){return'<div class="diag-row '+(c[1]?"pass":"warn")+'"><b>'+(c[1]?"✓":"! ")+' '+esc(c[0])+'</b><small>'+esc(c[2])+'</small></div>'}).join("");
   toast(checks.every(function(c){return c[1]})?"App check passed":"App check finished");
 }
-function render(){nav();renderTasks();renderToday();renderCalendar();renderBoard();renderGoals();renderProjects();renderNotes();renderHabits();renderShutdown();renderWeeklyReview();renderTemplates();renderArchive();renderAnalytics();renderHistory();renderFocus();renderSnapshots();renderPrivacySettings();theme()}
+function render(){if(privacyEnabled()&&!privacyUnlocked())return;nav();renderTasks();renderToday();renderCalendar();renderBoard();renderGoals();renderProjects();renderNotes();renderHabits();renderShutdown();renderWeeklyReview();renderTemplates();renderArchive();renderAnalytics();renderHistory();renderFocus();renderSnapshots();renderPrivacySettings();theme()}
 
 document.addEventListener("click",async function(e){
-  var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task],[data-date-add]");if(!b)return;
+  if(privacyEnabled()&&!privacyUnlocked())return;
+  var b=e.target.closest("button,[data-edit-note],[data-search],[data-edit-task],[data-date-add],[data-edit-project]");if(!b)return;
   if(b.dataset.view){state.view=b.dataset.view;nav();window.scrollTo(0,0);if(state.view==="focus")renderFocus();if(state.view==="history")renderHistory()}
   if(b.dataset.add==="task")openTask();if(b.dataset.add==="project")openSimple("project");if(b.dataset.add==="note")openSimple("note");if(b.dataset.add==="habit")openSimple("habit");
   if(b.dataset.close)$(b.dataset.close).close();
   if(b.dataset.toggle)await toggleTask(b.dataset.toggle);
   if(b.dataset.editTask)openTask(state.tasks.find(function(x){return x.id===b.dataset.editTask}));
   if(b.dataset.editNote)openSimple("note",state.notes.find(function(x){return x.id===b.dataset.editNote}));
+  if(b.dataset.editProject)openSimple("project",state.projects.find(function(x){return x.id===b.dataset.editProject}));
   if(b.dataset.toggleHabit)await toggleHabit(b.dataset.toggleHabit);
   if(b.dataset.deleteHabit&&confirm("Delete this habit?")){var habit=state.habits.find(function(x){return x.id===b.dataset.deleteHabit});await del("habits",b.dataset.deleteHabit);if(habit)await log("habit.deleted",habit.name);await load()}
   if(b.dataset.deleteProject&&confirm("Delete this project? Tasks will stay.")){var id=b.dataset.deleteProject,project=state.projects.find(function(x){return x.id===id});await del("projects",id);for(var t of state.tasks.filter(function(x){return x.projectId===id}))await save("tasks",Object.assign({},t,{projectId:""}));if(project)await log("project.deleted",project.name);await load()}
@@ -902,6 +912,11 @@ $("paletteInput").onkeydown=async function(e){
   else if(e.key==="Enter"){e.preventDefault();if(paletteItems[paletteIndex])await runPaletteAction(paletteItems[paletteIndex].action)}
 };
 document.addEventListener("keydown",function(e){
+  if(privacyEnabled()&&!privacyUnlocked()){
+    if((e.metaKey||e.ctrlKey)&&(e.key.toLowerCase()==="k"||e.key==="Enter"))e.preventDefault();
+    else if(e.key.toLowerCase()==="q"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName))e.preventDefault();
+    return;
+  }
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openPalette()}
   else if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();openQuick()}
   else if(e.key.toLowerCase()==="q"&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)&&!document.querySelector("dialog[open]")){openQuick()}
@@ -942,12 +957,29 @@ function installState(){var standalone=window.matchMedia("(display-mode: standal
 $("installApp").onclick=async function(){if(deferredInstall){deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;installState();return}if(/iphone|ipad|ipod/i.test(navigator.userAgent)){var h=$("iosInstall");if(h)h.classList.remove("hidden");toast("Safari → Share → Add to Home Screen → Add");return}toast("Use your browser menu → Install app / Add to Home Screen")};
 
 loadFocus();
-var params=new URLSearchParams(location.search);if(params.get("view"))state.view=params.get("view");if(params.get("quick")==="1")setTimeout(function(){openQuick()},300);
+var params=new URLSearchParams(location.search),requestedView=params.get("view"),startupIntentHandled=false;
+if(requestedView)state.view=VALID_VIEWS.includes(requestedView)?requestedView:"today";
+function handleStartupIntent(){
+  if(startupIntentHandled||(privacyEnabled()&&!privacyUnlocked()))return;
+  startupIntentHandled=true;
+  if(params.get("share")==="1")setTimeout(function(){openShareCapture(params)},180);
+  else if(params.get("quick")==="1")setTimeout(function(){openQuick()},180);
+  else setTimeout(function(){openOnboarding(false)},250);
+}
+window.addEventListener("storage",function(e){
+  if(e.key!=="cc-data-revision"||(privacyEnabled()&&!privacyUnlocked()))return;
+  load().then(function(){toast("Updated from another open tab")}).catch(function(error){console.warn("Cross-tab refresh failed",error)});
+});
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"&&(!privacyEnabled()||privacyUnlocked()))load().catch(function(error){console.warn("Refresh on focus failed",error)});
+});
 theme();installState();if(privacyEnabled()&&!privacyUnlocked())showPrivacyLock();load().then(async function(){
   if(state.focus.running){clearInterval(focusTimer);focusTimer=setInterval(tickFocus,1000)}
   await ensureDailySnapshot();
-  if(privacyEnabled()&&!privacyUnlocked())return;
-  if(params.get("share")==="1")setTimeout(function(){openShareCapture(params)},180);
-  else if(params.get("quick")!=="1")setTimeout(function(){openOnboarding(false)},250);
-}).catch(function(e){console.error(e);document.body.innerHTML="<main style='padding:40px;font-family:system-ui'><h1>Command Center could not start.</h1><p>Refresh the page. Your local data was not intentionally deleted.</p></main>"});
+  handleStartupIntent();
+}).catch(function(e){
+  console.error(e);
+  var blocked=/blocked/i.test((e&&e.message)||"");
+  document.body.innerHTML="<main style='padding:40px;font-family:system-ui'><h1>Command Center could not start.</h1><p>"+(blocked?"Another Command Center tab is holding the local database open. Close the other tab or installed app, then reopen this page.":"Refresh the page. Your local data was not intentionally deleted.")+"</p></main>";
+});
 registerServiceWorker();
