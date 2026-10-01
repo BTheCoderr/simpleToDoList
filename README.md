@@ -1,7 +1,11 @@
 # Command Center
 
 <p align="center">
-  <img src="public/icon-512.png" alt="Command Center app icon" width="150" />
+  <img src="docs/branding/command-center-desktop.png" alt="Command Center desktop product overview" width="100%" />
+</p>
+
+<p align="center">
+  <img src="public/icon-512.png" alt="Command Center app icon" width="120" />
 </p>
 
 <p align="center"><strong>A private, local-first productivity PWA built to plan, focus, review, and keep moving without an account or cloud database.</strong></p>
@@ -26,6 +30,10 @@
 ## Product experience
 
 Command Center is built around a simple loop: **capture → plan → focus → review**.
+
+<p align="center">
+  <img src="docs/branding/command-center-mobile.png" alt="Command Center mobile Tasks experience" width="320" />
+</p>
 
 ### Capture + organize
 
@@ -147,6 +155,10 @@ Deployment is deliberately separate from GitHub changes. A green CI run or repo 
 ## Repository guide
 
 - [CHANGELOG.md](./CHANGELOG.md) — release history
+- [ROADMAP.md](./ROADMAP.md) — shipped, improving, and exploring
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — development and review expectations
+- [SECURITY.md](./SECURITY.md) — vulnerability reporting and local-first security model
+- [LICENSE](./LICENSE) — repository usage terms
 - [public/index.html](./public/index.html) — application shell
 - [public/app.js](./public/app.js) — UI and workflow orchestration
 - [public/core.js](./public/core.js) — task/date/recurrence logic
@@ -183,3 +195,8 @@ npm run e2e
 `master` is the source of truth for the current v7.3 code. Production can intentionally lag behind `master` while changes are being accumulated and tested before an approved Netlify deploy.
 
 The product is designed to remain local-first: no server, account system, database service, API key, or environment variable is required for the core application.
+
+
+## License
+
+Copyright © 2026 Baheem Ferrell. All rights reserved. This public repository is viewable for portfolio, review, and collaboration purposes and is not released under an open-source license. See [LICENSE](./LICENSE).
