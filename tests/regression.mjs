@@ -417,4 +417,24 @@ test("backup module is actually used by import flow",()=>{
   assert.match(app,/No data was changed/);
 });
 
+
+test("backup validation rejects missing and duplicate ids",()=>{
+  const base={version:BACKUP_VERSION,tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[]};
+  assert.equal(validateBackupPayload({...base,tasks:[{title:"missing"}]}).ok,false);
+  assert.equal(validateBackupPayload({...base,tasks:[{id:"same"},{id:"same"}]}).ok,false);
+});
+test("markdown export keeps orphaned projects and tasks",()=>{
+  const md=workspaceToMarkdown({goals:[],projects:[{id:"p1",name:"Orphan project",goalId:"missing"}],tasks:[{id:"t1",title:"Orphan task",projectId:"missing"}]});
+  assert.match(md,/Orphan project/);
+  assert.match(md,/Orphan task/);
+});
+test("audit hardening is present",()=>{
+  assert.match(storage,/export function replaceStores/);
+  assert.match(app,/cc-data-revision/);
+  assert.match(app,/data-edit-project/);
+  assert.match(app,/VALID_VIEWS/);
+  assert.match(sw,/privateShare/);
+  assert.match(css,/v7\.3 audit hardening/);
+});
+
 console.log("\n"+passed+" regression checks passed.");
