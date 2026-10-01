@@ -1,4 +1,4 @@
-export const APP_VERSION="8.1.0";
+export const APP_VERSION="8.2.0";
 export const DB_NAME="command-center-v2"; // Kept intentionally so existing local data is preserved.
 export const DB_VERSION=4;
 export const STORES=["tasks","projects","notes","habits","activity","templates","goals","snapshots","meta"];
