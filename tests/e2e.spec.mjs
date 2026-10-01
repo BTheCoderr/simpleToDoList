@@ -265,7 +265,7 @@ test("Planner month week day modes persist and drag rescheduling updates dates",
   const source=page.locator('[data-planner-drag-task]').filter({hasText:"Planner drag target"}).first();
   const target=page.locator("[data-planner-date]").last();
   const targetDate=await target.getAttribute("data-planner-date");
-  expect(targetDate).toMatch(/^20\\d{2}-\\d{2}-\\d{2}$/);
+  expect(targetDate).toMatch(/^20\d{2}-\d{2}-\d{2}$/);
   const dataTransfer=await page.evaluateHandle(()=>new DataTransfer());
   await source.dispatchEvent("dragstart",{dataTransfer});
   await target.dispatchEvent("dragover",{dataTransfer});
