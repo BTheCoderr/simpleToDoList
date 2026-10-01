@@ -8,7 +8,7 @@
   <img src="public/icon-512.png" alt="Command Center app icon" width="120" />
 </p>
 
-<p align="center"><strong>A private, local-first productivity PWA built to plan, focus, review, and keep moving without an account or cloud database.</strong></p>
+<p align="center"><strong>A private, local-first productivity PWA built to separate Signal from Noise, finish the few things that matter today, and keep everything else safely parked.</strong></p>
 
 [![CI](https://github.com/BTheCoderr/simpleToDoList/actions/workflows/ci.yml/badge.svg)](https://github.com/BTheCoderr/simpleToDoList/actions/workflows/ci.yml)
 ![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?logo=pwa&logoColor=white)
@@ -21,7 +21,7 @@
 <!-- repo-intro:start -->
 **Project snapshot:** Command Center is a private, local-first personal productivity system that evolved from a simple to-do list into an installable PWA with planning, focus, goals, habits, review workflows, recovery tools, privacy controls, exports, and browser QA.
 
-**Current product:** v7.3 · browser-native JavaScript · IndexedDB schema v4 · installable/offline PWA · no account service · no cloud database.
+**Current product:** v8.0 · Signal First · browser-native JavaScript · IndexedDB schema v4 · installable/offline PWA · no account service · no cloud database.
 
 **What it demonstrates:** JavaScript · IndexedDB · PWA/offline architecture · Playwright E2E · local-first product design · progressive enhancement · release hardening.
 <!-- repo-intro:end -->
@@ -29,11 +29,21 @@
 <!-- portfolio-refresh:start -->
 ## Product experience
 
-Command Center is built around a simple loop: **capture → plan → focus → review**.
+Command Center is built around a stricter loop: **choose Signal → focus → finish → review**. Capture still matters, but captured work stays Noise until it deliberately earns one of today's limited Signal slots.
 
 <p align="center">
   <img src="docs/branding/command-center-mobile.png" alt="Command Center mobile Tasks experience" width="320" />
 </p>
+
+### Signal + Noise
+
+- explicit daily **Signal** of 3–5 Must-Wins
+- hard cap of 5 Signal items to prevent priority inflation
+- one-tap **Promote to Signal** / **Park as Noise** controls
+- Noise parking lot on the main dashboard
+- Focus Mode groups today's Signal before all other open work
+- Daily Shutdown creates tomorrow's Signal
+- Weekly planning can pre-seed Monday's Signal
 
 ### Capture + organize
 
@@ -52,7 +62,7 @@ Command Center is built around a simple loop: **capture → plan → focus → r
 - Persistent Kanban ordering
 - Focus Mode with selectable work sessions
 - Goal → Project → Task hierarchy
-- Customizable Today dashboard
+- Customizable Signal dashboard
 
 ### Review + recover
 
@@ -116,7 +126,7 @@ Command Center is a real installable Progressive Web App, not just a mobile-shap
 - 180×180 Apple touch icon
 - 192×192 and 512×512 PNG icons
 - 512×512 maskable icon
-- offline cache `command-center-v16`
+- offline cache `command-center-v18`
 - offline navigation/deep-link fallback
 - Web Share Target
 - browser install prompt where supported
@@ -129,7 +139,7 @@ Command Center is a real installable Progressive Web App, not just a mobile-shap
 
 IndexedDB stores:
 
-- tasks
+- tasks (including the schema-free `signalDate` field used to mark a task as Signal for a specific day)
 - projects
 - notes
 - habits
@@ -192,7 +202,7 @@ npm run e2e
 
 ## Release status
 
-`master` is the source of truth for the current v7.3 code. Production can intentionally lag behind `master` while changes are being accumulated and tested before an approved Netlify deploy.
+`master` is the source of truth for released code. The Signal First v8 work is merged there only after its regression and browser gates pass. Production can intentionally lag behind `master` while changes are being accumulated and tested before an approved Netlify deploy.
 
 The product is designed to remain local-first: no server, account system, database service, API key, or environment variable is required for the core application.
 
