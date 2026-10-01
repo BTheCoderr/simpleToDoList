@@ -226,6 +226,51 @@ test("Focus Complete advances to the next Signal item",async ({page})=>{
   await expect(page.locator("#focusTask option:checked")).toHaveText("Focus Signal B");
   await expect(page.locator("#focusNextHint")).toContainText("Finish this one");
 });
+test("Signal History shows chosen versus completed Must-Wins",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"History A"});
+  await createTask(page,{title:"History B"});
+  for(const title of ["History A","History B"]){
+    const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
+    await row.getByRole("button",{name:/Signal/}).click();
+  }
+  const done=page.locator("#taskList .task-row").filter({hasText:"History A"}).first();
+  await done.locator(".checkbtn").click();
+  await page.goto("/?view=today");
+  await expect(page.locator("#signalHistoryList")).toContainText("1 of 2 Must-Wins finished");
+  await expect(page.locator("#signalHistoryList")).toContainText("1/2");
+});
+
+test("Noise Aging surfaces stale decisions and Keep resets the age",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Ancient Noise"});
+  await page.evaluate(()=>new Promise((resolve,reject)=>{
+    const request=indexedDB.open("command-center-v2",4);
+    request.onerror=()=>reject(request.error);
+    request.onsuccess=()=>{
+      const db=request.result,tx=db.transaction("tasks","readwrite"),store=tx.objectStore("tasks"),q=store.getAll();
+      q.onsuccess=()=>{
+        const t=q.result.find(x=>x.title==="Ancient Noise");
+        const d=new Date();d.setDate(d.getDate()-40);t.createdAt=d.toISOString();store.put(t);
+      };
+      tx.oncomplete=()=>{db.close();resolve()};
+      tx.onerror=()=>{db.close();reject(tx.error)};
+    };
+  }));
+  await page.reload();
+  await page.goto("/?view=today");
+  const item=page.locator("#todayNoise .noise-item").filter({hasText:"Ancient Noise"});
+  await expect(item).toContainText(/\d+d stale/);
+  await expect(item.getByRole("button",{name:"Keep"})).toBeVisible();
+  await expect(item.getByRole("button",{name:"Archive"})).toBeVisible();
+  await expect(item.getByRole("button",{name:"Trash"})).toBeVisible();
+  await item.getByRole("button",{name:"Keep"}).click();
+  await expect(page.locator("#todayNoise .noise-item").filter({hasText:"Ancient Noise"})).not.toContainText(/stale|waiting|old/);
+});
 test("Signal dashboard visibility and order persist after reload",async ({page})=>{
   await page.goto("/?view=today");
   await assertAppBooted(page);
