@@ -6,6 +6,8 @@ test.beforeEach(async ({page})=>{
   await page.addInitScript(()=>{
     localStorage.setItem("cc-onboarded-v1","1");
     localStorage.setItem("cc-theme","dark");
+    const d=new Date(),key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    localStorage.setItem("cc-signal-builder-day",key);
   });
 });
 
@@ -163,12 +165,14 @@ test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
 
   const sixth=page.locator("#taskList .task-row").filter({hasText:"Noise F"}).first();
   await sixth.getByRole("button",{name:/Signal/}).click();
-  await expect(page.locator("#toast")).toContainText("Signal is full");
+  await expect(page.locator("#signalSwapModal")).toHaveAttribute("open","");
+  await expect(page.locator("#signalSwapIncoming")).toHaveText("Noise F");
+  await page.locator("#signalSwapOptions .swap-option").first().click();
 
   await page.goto("/?view=today");
   await expect(page.locator("#sToday")).toHaveText("5/5");
-  await expect(page.locator("#todayTasks")).toContainText("Must Win A");
-  await expect(page.locator("#todayNoise")).toContainText("Noise F");
+  await expect(page.locator("#todayTasks")).toContainText("Noise F");
+  await expect(page.locator("#todayNoise")).toContainText("Must Win A");
 
   const park=page.locator("#todayTasks .task-row").filter({hasText:"Must Win E"}).first();
   await park.getByRole("button",{name:/Park/}).click();
