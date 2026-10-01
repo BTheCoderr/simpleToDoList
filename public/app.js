@@ -251,6 +251,10 @@ var DASHBOARD_LABELS={tasks:"Today's Signal",noise:"Noise parking lot",habits:"H
 function dashboardPrefs(){
   try{
     var saved=JSON.parse(localStorage.getItem("cc-today-layout-v1")||"null"),order=saved&&Array.isArray(saved.order)?saved.order.slice():DASHBOARD_DEFAULT.order.slice(),hidden=saved&&Array.isArray(saved.hidden)?saved.hidden.slice():[];
+    if(!order.includes("noise")){
+      var taskIndex=order.indexOf("tasks");
+      order.splice(taskIndex>=0?taskIndex+1:0,0,"noise");
+    }
     DASHBOARD_DEFAULT.order.forEach(function(key){if(!order.includes(key))order.push(key)});
     order=order.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
     hidden=hidden.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
@@ -277,7 +281,7 @@ function moveDashboardCard(key,direction){
   var tmp=dashboardDraft.order[from];dashboardDraft.order[from]=dashboardDraft.order[to];dashboardDraft.order[to]=tmp;renderDashboardOptions();
 }
 function saveDashboardLayout(e){
-  e.preventDefault();if(!dashboardDraft)return;localStorage.setItem("cc-today-layout-v1",JSON.stringify(dashboardDraft));$("dashboardModal").close();applyDashboardLayout();toast("Today layout saved")
+  e.preventDefault();if(!dashboardDraft)return;localStorage.setItem("cc-today-layout-v1",JSON.stringify(dashboardDraft));$("dashboardModal").close();applyDashboardLayout();toast("Signal layout saved")
 }
 function resetDashboardDraft(){dashboardDraft={order:DASHBOARD_DEFAULT.order.slice(),hidden:[]};renderDashboardOptions()}
 
@@ -745,7 +749,7 @@ async function refreshSystemInfo(){
 
 var onboardingStep=0;
 var onboardingSlides=[
-  {icon:"⌂",eyebrow:"WELCOME",title:"Your day, without the noise.",body:"Today surfaces what matters now. Everything stays private on this device — no account and no cloud database required.",action:"See Quick Add"},
+  {icon:"◎",eyebrow:"WELCOME",title:"Signal over noise.",body:"Choose 3–5 Must-Wins for the day. Everything else stays parked until it earns a Signal slot. Your workspace stays private on this device.",action:"See Quick Add"},
   {icon:"＋",eyebrow:"CAPTURE FAST",title:"Type it like you think it.",body:"Try “Call Josh tomorrow 3pm #work !high.” Command Center pulls out the date, time, priority and project locally.",action:"See Planner"},
   {icon:"▣",eyebrow:"PLAN + MOVE",title:"See the month. Move the work.",body:"Planner puts deadlines on a calendar. Board lets you move tasks from Inbox → Next → Doing → Done.",action:"See Focus"},
   {icon:"◉",eyebrow:"FOCUS",title:"One task. One timer.",body:"Choose a task, start 25 / 50 / 90 minutes, and let everything else wait. Export JSON backups anytime from Settings.",action:"Start using Command Center"}
