@@ -16,7 +16,8 @@ export function normalizeTask(task){
     completedAt:null,
     archivedAt:null,
     deletedAt:null,
-    boardOrder:null
+    boardOrder:null,
+    signalDate:""
   },task,{subtasks:Array.isArray(task.subtasks)?task.subtasks:[],tags:Array.isArray(task.tags)?task.tags.filter(Boolean).map(tag=>String(tag).toLowerCase()):[],repeatWeekdays:Array.isArray(task.repeatWeekdays)?Array.from(new Set(task.repeatWeekdays.map(Number).filter(day=>day>=0&&day<=6))).sort((a,b)=>a-b):[]});
 }
 
@@ -29,6 +30,20 @@ export function dateKey(date){
 
 export function today(){
   return dateKey(new Date());
+}
+
+export const MAX_DAILY_SIGNAL=5;
+
+export function signalTasks(tasks,date=today()){
+  return (tasks||[]).filter(task=>task&&!task.deletedAt&&!task.archivedAt&&task.signalDate===date);
+}
+
+export function openSignalTasks(tasks,date=today()){
+  return signalTasks(tasks,date).filter(task=>task.status!=="done");
+}
+
+export function noiseTasks(tasks,date=today()){
+  return (tasks||[]).filter(task=>task&&!task.deletedAt&&!task.archivedAt&&task.status!=="done"&&task.signalDate!==date);
 }
 
 export function addDays(date,count){

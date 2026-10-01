@@ -20,13 +20,17 @@ import {
   today,
   nextOccurrence,
   parseQuick as parseQuickCore,
-  goalProgress as goalProgressCore
+  goalProgress as goalProgressCore,
+  MAX_DAILY_SIGNAL,
+  signalTasks,
+  openSignalTasks,
+  noiseTasks
 } from "./core.js";
 import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backup.js";
 import { createPrivacyCredential, verifyPrivacyCode } from "./privacy.js";
 import { tasksToCsv, workspaceToMarkdown } from "./exporters.js";
 
-const SW_CACHE="command-center-v17";
+const SW_CACHE="command-center-v18";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),plannerMode:localStorage.getItem("cc-planner-mode")||"month",focus:null};
 var VALID_VIEWS=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","history","settings"];
 if(!VALID_VIEWS.includes(state.view))state.view="today";
@@ -61,7 +65,7 @@ document.addEventListener("keydown",function(e){
   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
 });
-var defaults={projects:[{id:"p1",name:"Launch Command Center",area:"Personal",createdAt:new Date().toISOString()},{id:"p2",name:"Win the Week",area:"Work",createdAt:new Date().toISOString()}],tasks:[{id:"t1",title:"Pick your top 3 priorities",description:"Use Today for what actually matters.",status:"next",priority:"high",projectId:"p2",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null},{id:"t2",title:"Export your first backup",description:"Settings → Export JSON keeps a portable copy.",status:"inbox",priority:"medium",projectId:"p1",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}],notes:[{id:"n1",title:"How I want to use this",body:"Capture fast. Organize later. Keep Today small.",pinned:true,updatedAt:new Date().toISOString()}],habits:[{id:"h1",name:"Plan tomorrow",history:[],createdAt:new Date().toISOString()}]};
+var defaults={projects:[{id:"p1",name:"Launch Command Center",area:"Personal",createdAt:new Date().toISOString()},{id:"p2",name:"Win the Week",area:"Work",createdAt:new Date().toISOString()}],tasks:[{id:"t1",title:"Choose today's 3–5 Must-Wins",description:"Make the signal explicit. Everything else can wait.",status:"next",priority:"high",projectId:"p2",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null,signalDate:today()},{id:"t2",title:"Export your first backup",description:"Settings → Export JSON keeps a portable copy.",status:"inbox",priority:"medium",projectId:"p1",dueDate:"",dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null,signalDate:""}],notes:[{id:"n1",title:"Signal over noise",body:"Choose 3–5 Must-Wins. Finish the signal before feeding the noise.",pinned:true,updatedAt:new Date().toISOString()}],habits:[{id:"h1",name:"Plan tomorrow's Signal",history:[],createdAt:new Date().toISOString()}]};
 var builtInTemplates=[
   {id:"builtin-weekly-reset",name:"Weekly Reset",title:"Weekly reset",description:"Review calendar, inbox, projects and priorities.",priority:"high",projectId:"",subtasks:["Clear inbox","Review overdue tasks","Review active projects","Choose top 3 for next week","Export a backup"]},
   {id:"builtin-job-application",name:"Job Application",title:"Apply to role",description:"Reusable application checklist.",priority:"high",projectId:"",subtasks:["Tailor resume","Review company and role","Write application answers","Attach work sample","Submit and record follow-up date"]},
@@ -91,14 +95,14 @@ function repeatLabel(t){
   }
   return labels[t.repeat]||t.repeat;
 }
-function taskScore(t){var p={high:0,medium:1,low:2};return (t.status==="done"?100:0)+(p[t.priority]||0)}
+function taskScore(t){var p={high:0,medium:1,low:2},signal=t.signalDate===today()?-20:0;return signal+(t.status==="done"?100:0)+(p[t.priority]||0)}
 
 function nav(){
   var navView=["templates","archive"].includes(state.view)?"tasks":["shutdown","analytics","history"].includes(state.view)?"review":state.view;
   $$(".nav,.bottom button").forEach(function(b){var active=b.dataset.view===navView;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   $$(".view").forEach(function(v){v.classList.toggle("active",v.id===state.view)});
   var v=$(state.view);
-  if(v){$("title").textContent={today:"Today",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",history:"Activity History",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"YOUR DAY",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",history:"AUDIT TRAIL",settings:"YOUR WORKSPACE"}[v.id]||""}
+  if(v){$("title").textContent={today:"Signal",tasks:"Tasks",planner:"Planner",board:"Board",focus:"Focus",goals:"Goals",projects:"Projects",notes:"Notes",habits:"Habits",shutdown:"Daily Review",review:"Weekly Review",templates:"Templates",archive:"Archive",analytics:"Review Analytics",history:"Activity History",settings:"Settings"}[v.id]||v.id;$("eyebrow").textContent={today:"3–5 MUST-WINS",tasks:"EXECUTION",planner:"CALENDAR",board:"FLOW",focus:"DEEP WORK",goals:"DIRECTION",projects:"OUTCOMES",notes:"THINKING SPACE",habits:"CONSISTENCY",shutdown:"CLOSE THE DAY",review:"RESET",templates:"REUSE",archive:"HISTORY",analytics:"PATTERNS",history:"AUDIT TRAIL",settings:"YOUR WORKSPACE"}[v.id]||""}
   localStorage.setItem("cc-view",state.view);
   try{
     var url=new URL(location.href);url.searchParams.set("view",state.view);url.searchParams.delete("quick");
@@ -117,7 +121,7 @@ function savedTaskViews(){
 function writeSavedTaskViews(views){localStorage.setItem(SAVED_VIEWS_KEY,JSON.stringify(views.slice(0,20)))}
 function currentTaskView(){return {filter:state.filter,projectFilter:state.projectFilter||"",tagFilter:state.tagFilter||""}}
 function taskViewSummary(view){
-  var labels={open:"Open",inbox:"Inbox",next:"Next",doing:"Doing",done:"Done",all:"All tasks"},parts=[labels[view.filter]||"Open"];
+  var labels={signal:"Signal",noise:"Noise",open:"Open",inbox:"Inbox",next:"Next",doing:"Doing",done:"Done",all:"All tasks"},parts=[labels[view.filter]||"Open"];
   if(view.projectFilter)parts.push("Project: "+(pname(view.projectFilter)||"Unknown"));
   if(view.tagFilter)parts.push("#"+view.tagFilter);
   return parts.join(" · ");
@@ -155,7 +159,8 @@ function deleteSavedView(id){
 }
 
 function taskHTML(t){
-  var p=pname(t.projectId),st=subtaskStats(t),sub=st.total?'<span class="pill">'+st.done+'/'+st.total+' checklist</span>':"",selected=state.selectedTaskIds.has(t.id);
+  var p=pname(t.projectId),st=subtaskStats(t),sub=st.total?'<span class="pill">'+st.done+'/'+st.total+' checklist</span>':"",selected=state.selectedTaskIds.has(t.id),isSignal=t.signalDate===today();
+  var signalControl=t.status==="done"?"":'<button class="signal-toggle '+(isSignal?"active":"")+'" data-signal-task="'+t.id+'" aria-label="'+(isSignal?"Park ":"Promote ")+esc(t.title)+(isSignal?" from Signal":" to Signal")+'">'+(isSignal?"↓ Park":"↑ Signal")+'</button>';
   return `<div class="task-row" data-task-row="${t.id}">
     <div class="task-actions">
       <button class="swipe-edit" data-swipe-edit="${t.id}">Edit</button>
@@ -164,12 +169,13 @@ function taskHTML(t){
       <button class="swipe-done" data-swipe-complete="${t.id}">${t.status==="done"?"Undo":"Done"}</button>
       <button class="swipe-delete" data-swipe-delete="${t.id}">Delete</button>
     </div>
-    <div class="task ${t.status==="done"?"done ":""}${selected?"selected":""}">
+    <div class="task ${t.status==="done"?"done ":""}${selected?"selected":""}${isSignal?" signal-task":""}">
       <label class="task-select" aria-label="Select ${esc(t.title)}"><input type="checkbox" data-select-task="${t.id}" ${selected?"checked":""}></label>
       <button class="checkbtn" data-toggle="${t.id}">${t.status==="done"?"✓":""}</button>
       <div class="taskmain" data-edit-task="${t.id}">
         <div class="tasktitle">${esc(t.title)}</div>
         <div class="meta">
+          ${isSignal?'<span class="pill signal-pill">SIGNAL</span>':""}
           <span class="pill ${t.priority}">${esc(t.priority)}</span>
           <span class="pill">${esc(t.status)}</span>
           ${p?'<span class="pill">'+esc(p)+'</span>':""}
@@ -179,13 +185,18 @@ function taskHTML(t){
           ${sub}
         </div>
       </div>
+      ${signalControl}
       <button class="dots" data-edit-task="${t.id}" aria-label="Edit ${esc(t.title)}">•••</button>
     </div>
   </div>`
 }
+function noiseHTML(t){
+  var p=pname(t.projectId);
+  return '<div class="noise-item"><div><b>'+esc(t.title)+'</b><small>'+(p?esc(p)+' · ':"")+(t.dueDate?fmt(t.dueDate,t.dueTime):"No deadline")+'</small></div><button type="button" data-signal-task="'+t.id+'">↑ Promote</button></div>';
+}
 function filteredTasks(){
   var a=activeTasks().slice().sort(function(a,b){return taskScore(a)-taskScore(b)});
-  if(state.filter==="open")a=a.filter(function(t){return t.status!=="done"});else if(state.filter!=="all")a=a.filter(function(t){return t.status===state.filter});
+  if(state.filter==="signal")a=a.filter(function(t){return t.signalDate===today()});else if(state.filter==="noise")a=a.filter(function(t){return t.status!=="done"&&t.signalDate!==today()});else if(state.filter==="open")a=a.filter(function(t){return t.status!=="done"});else if(state.filter!=="all")a=a.filter(function(t){return t.status===state.filter});
   if(state.projectFilter)a=a.filter(function(t){return t.projectId===state.projectFilter});
   if(state.tagFilter)a=a.filter(function(t){return (t.tags||[]).includes(state.tagFilter)});
   return a;
@@ -235,11 +246,15 @@ function toggleBulkMode(){state.bulkMode=!state.bulkMode;if(!state.bulkMode)stat
 function streak(h){var s=new Set(h||[]),d=new Date(),n=0;if(!s.has(today()))d.setDate(d.getDate()-1);while(s.has(dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function habitHTML(h){var on=(h.history||[]).indexOf(today())>=0;return'<div class="habit '+(on?"checked":"")+'"><button data-toggle-habit="'+h.id+'">'+(on?"✓":"○")+'</button><div><b>'+esc(h.name)+'</b><small>'+streak(h.history)+' day streak · '+(h.history||[]).length+' check-ins</small></div><button data-delete-habit="'+h.id+'">Delete</button></div>'}
 
-var DASHBOARD_DEFAULT={order:["tasks","habits","projects","capture"],hidden:[]},dashboardDraft=null;
-var DASHBOARD_LABELS={tasks:"Today's priorities",habits:"Habits",projects:"Projects",capture:"Quick inbox"};
+var DASHBOARD_DEFAULT={order:["tasks","noise","projects","habits","capture"],hidden:[]},dashboardDraft=null;
+var DASHBOARD_LABELS={tasks:"Today's Signal",noise:"Noise parking lot",habits:"Habits",projects:"Projects",capture:"Quick inbox"};
 function dashboardPrefs(){
   try{
     var saved=JSON.parse(localStorage.getItem("cc-today-layout-v1")||"null"),order=saved&&Array.isArray(saved.order)?saved.order.slice():DASHBOARD_DEFAULT.order.slice(),hidden=saved&&Array.isArray(saved.hidden)?saved.hidden.slice():[];
+    if(!order.includes("noise")){
+      var taskIndex=order.indexOf("tasks");
+      order.splice(taskIndex>=0?taskIndex+1:0,0,"noise");
+    }
     DASHBOARD_DEFAULT.order.forEach(function(key){if(!order.includes(key))order.push(key)});
     order=order.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
     hidden=hidden.filter(function(key){return DASHBOARD_DEFAULT.order.includes(key)});
@@ -266,16 +281,16 @@ function moveDashboardCard(key,direction){
   var tmp=dashboardDraft.order[from];dashboardDraft.order[from]=dashboardDraft.order[to];dashboardDraft.order[to]=tmp;renderDashboardOptions();
 }
 function saveDashboardLayout(e){
-  e.preventDefault();if(!dashboardDraft)return;localStorage.setItem("cc-today-layout-v1",JSON.stringify(dashboardDraft));$("dashboardModal").close();applyDashboardLayout();toast("Today layout saved")
+  e.preventDefault();if(!dashboardDraft)return;localStorage.setItem("cc-today-layout-v1",JSON.stringify(dashboardDraft));$("dashboardModal").close();applyDashboardLayout();toast("Signal layout saved")
 }
 function resetDashboardDraft(){dashboardDraft={order:DASHBOARD_DEFAULT.order.slice(),hidden:[]};renderDashboardOptions()}
 
 function renderToday(){
   var now=new Date(),hr=now.getHours();$("todayDate").textContent=now.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});$("greeting").textContent=hr<12?"Good morning.":hr<18?"Good afternoon.":"Good evening.";
-  var base=activeTasks(),open=base.filter(function(t){return t.status!=="done"}),focus=open.filter(function(t){return t.priority==="high"||t.status==="doing"||t.dueDate===today()||overdue(t)}).slice(0,6);
-  $("todayTasks").innerHTML=focus.length?focus.map(taskHTML).join(""):'<div class="empty">No urgent work. Pull something from Tasks.</div>';
-  $("sToday").textContent=focus.length;$("sOverdue").textContent=open.filter(overdue).length;
-  var week=new Date();week.setDate(week.getDate()-7);$("sWeek").textContent=base.filter(function(t){return t.completedAt&&new Date(t.completedAt)>=week}).length;$("sProjects").textContent=state.projects.length;
+  var base=activeTasks(),open=base.filter(function(t){return t.status!=="done"}),signal=signalTasks(base,today()).slice().sort(function(a,b){return taskScore(a)-taskScore(b)}),signalDone=signal.filter(function(t){return t.status==="done"}),noise=noiseTasks(base,today()).slice().sort(function(a,b){return taskScore(a)-taskScore(b)});
+  $("todayTasks").innerHTML=signal.length?signal.map(taskHTML).join(""):'<div class="empty signal-empty"><b>No Signal chosen yet.</b><span>Pick 3–5 Must-Wins. Everything else can stay parked.</span><button type="button" data-view="tasks" class="primary">Choose from Tasks</button></div>';
+  $("todayNoise").innerHTML=noise.length?noise.slice(0,6).map(noiseHTML).join(""):'<div class="empty">Nothing is competing with your Signal.</div>';
+  $("sToday").textContent=signal.length+"/"+MAX_DAILY_SIGNAL;$("sSignalDone").textContent=signalDone.length;$("sNoise").textContent=noise.length;$("sOverdue").textContent=open.filter(overdue).length;
   $("todayHabits").innerHTML=state.habits.length?state.habits.slice(0,5).map(habitHTML).join(""):'<div class="empty">Add a habit.</div>';
   $("todayProjects").innerHTML=state.projects.slice(0,5).map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<div class="mini"><b>'+esc(p.name)+'</b><small>'+d+'/'+a.length+' tasks complete</small><div class="progress"><i style="width:'+pc+'%"></i></div></div>'}).join("")||'<div class="empty">No projects yet.</div>';applyDashboardLayout();
 }
@@ -378,7 +393,7 @@ async function createQuick(text){var q=parseQuick(text);if(!q.title)return; q.id
 
 async function spawnNextOccurrence(t){
   var due=nextOccurrence(t);if(!due)return;
-  var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,boardOrder:null,subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
+  var copy=Object.assign({},t,{id:uid("t"),status:"next",completedAt:null,dueDate:due,createdAt:new Date().toISOString(),archivedAt:null,deletedAt:null,boardOrder:null,signalDate:"",subtasks:(t.subtasks||[]).map(function(s){return{id:uid("s"),title:s.title,done:false}})});
   await save("tasks",copy);await log("task.recurred",t.title,{nextDue:due});
 }
 async function setTaskStatus(t,status){
@@ -404,11 +419,24 @@ async function saveTask(e){
   e.preventDefault();var old=state.tasks.find(function(t){return t.id===$("taskId").value}),status=$("taskStatus").value,was=old?old.status:null;
   var repeat=$("taskRepeat").value,repeatWeekdays=repeat==="selected_weekdays"?$$("[data-repeat-weekday]:checked").map(function(input){return Number(input.dataset.repeatWeekday)}):[];
   if(repeat==="selected_weekdays"&&!repeatWeekdays.length){toast("Choose at least one repeat day");return}
-  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null,boardOrder:old?old.boardOrder:null};
+  var t={id:old?old.id:uid("t"),title:$("taskTitle").value.trim(),description:$("taskDescription").value.trim(),status:status,priority:$("taskPriority").value,projectId:$("taskProject").value,tags:parseTagInput($("taskTags").value),dueDate:$("taskDue").value,dueTime:$("taskTime").value,repeat:repeat,repeatInterval:Math.max(1,Number($("taskRepeatInterval").value)||1),repeatUntil:$("taskRepeatUntil").value,repeatWeekdays:repeatWeekdays,subtasks:editingSubtasks,createdAt:old?old.createdAt:new Date().toISOString(),completedAt:status==="done"?(old&&old.completedAt?old.completedAt:new Date().toISOString()):null,archivedAt:old?old.archivedAt:null,deletedAt:old?old.deletedAt:null,boardOrder:old?old.boardOrder:null,signalDate:old?old.signalDate||"":""};
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
   var t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,t.status==="done"?"next":"done");await load()
+}
+async function toggleSignal(id){
+  var t=state.tasks.find(function(x){return x.id===id});if(!t||t.deletedAt||t.archivedAt)return;
+  var isSignal=t.signalDate===today();
+  if(isSignal){
+    if(t.status==="done"){toast("Completed Signal stays on today's record");return}
+    t.signalDate="";await save("tasks",t);await log("signal.parked",t.title);await load();toast("Parked as noise");return;
+  }
+  if(t.status==="done"){toast("Completed tasks cannot be promoted");return}
+  var current=signalTasks(activeTasks(),today());
+  if(current.length>=MAX_DAILY_SIGNAL){toast("Signal is full: park one of the five first");return}
+  t.signalDate=today();if(t.status==="inbox")t.status="next";
+  await save("tasks",t);await log("signal.promoted",t.title,{date:today()});await load();toast("Added to today's Signal");
 }
 function syncRepeatUI(){
   var repeat=$("taskRepeat").value,showInterval=["custom_days","after_completion","custom_weeks"].includes(repeat);
@@ -431,12 +459,18 @@ function persistFocus(){localStorage.setItem("cc-focus",JSON.stringify(state.foc
 function focusDisplay(seconds){seconds=Math.max(0,Math.floor(seconds));return String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0")}
 function renderFocus(){
   if(!state.focus)loadFocus();
-  var open=activeTasks().filter(function(t){return t.status!=="done"});$("focusTask").innerHTML='<option value="">Choose a task</option>'+open.map(function(t){return'<option value="'+t.id+'">'+esc(t.title)+'</option>'}).join("");
+  var allOpen=activeTasks().filter(function(t){return t.status!=="done"}),signal=openSignalTasks(allOpen,today()),noise=allOpen.filter(function(t){return t.signalDate!==today()});
+  var options='<option value="">Choose a task</option>';
+  if(signal.length){
+    options+='<optgroup label="Today\'s Signal">'+signal.map(function(t){return'<option value="'+t.id+'">'+esc(t.title)+'</option>'}).join("")+'</optgroup>';
+    if(noise.length)options+='<optgroup label="Noise — only if truly necessary">'+noise.map(function(t){return'<option value="'+t.id+'">'+esc(t.title)+'</option>'}).join("")+'</optgroup>';
+  }else options+=allOpen.map(function(t){return'<option value="'+t.id+'">'+esc(t.title)+'</option>'}).join("");
+  $("focusTask").innerHTML=options;
   if(state.focus.taskId)$("focusTask").value=state.focus.taskId;
   $("focusClock").textContent=focusDisplay(state.focus.remaining);
   $$("[data-minutes]").forEach(function(b){b.classList.toggle("active",Number(b.dataset.minutes)===state.focus.minutes)});
   $("focusStart").textContent=state.focus.running?"Running…":(state.focus.remaining<state.focus.minutes*60?"Resume focus":"Start focus");
-  $("focusStatusText").textContent=state.focus.taskId?(state.tasks.find(function(t){return t.id===state.focus.taskId})||{}).title||"Pick one task.":"Pick one task. Everything else can wait.";
+  $("focusStatusText").textContent=state.focus.taskId?(state.tasks.find(function(t){return t.id===state.focus.taskId})||{}).title||"Pick one Must-Win.":"Pick one Must-Win. Noise can wait.";
   var start=new Date();start.setHours(0,0,0,0);var hist=state.activity.filter(function(a){return a.type==="focus.completed"&&new Date(a.createdAt)>=start}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
   $("focusHistory").innerHTML=hist.length?hist.map(function(a){return'<div class="focus-history-item"><b>'+esc(a.label)+'</b><small>'+a.minutes+' min · '+new Date(a.createdAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+'</small></div>'}).join(""):'<div class="empty">No focus sessions yet today.</div>';
 }
@@ -581,17 +615,19 @@ function renderShutdown(){
 async function completeShutdown(e){
   e.preventDefault();await createSnapshot("Before daily shutdown");var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);var due=dateKey(tomorrow);
   if($("shutdownRoll").checked){var rolled=activeTasks().filter(function(x){return x.status!=="done"&&x.dueDate===today()}).map(function(t){t.dueDate=due;return t});await saveMany("tasks",rolled)}
-  var vals=[$("shutdown1").value,$("shutdown2").value,$("shutdown3").value].map(function(x){return x.trim()}).filter(Boolean);
-  var planned=vals.map(function(title,i){return {id:uid("t"),title:title,description:"",status:"next",priority:i===0?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
+  var vals=[$("shutdown1").value,$("shutdown2").value,$("shutdown3").value,$("shutdown4").value,$("shutdown5").value].map(function(x){return x.trim()}).filter(Boolean);
+  if(!vals.length){toast("Choose at least one Must-Win for tomorrow");return}
+  var planned=vals.map(function(title,i){return {id:uid("t"),title:title,description:"Tomorrow's Signal",status:"next",priority:i<3?"high":"medium",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null,signalDate:due}});await saveMany("tasks",planned);
   var reflection=$("shutdownReflection").value.trim();if(reflection)await save("notes",{id:uid("n"),title:"Daily shutdown — "+today(),body:reflection,pinned:false,updatedAt:new Date().toISOString()});
-  await log("shutdown.completed","Daily shutdown",{planned:vals.length,rolled:$("shutdownRoll").checked});$("shutdownForm").reset();$("shutdownRoll").checked=true;await load();await createSnapshot("Daily shutdown complete");toast("Day closed. Tomorrow is planned.");
+  await log("signal.planned","Tomorrow's Signal",{planned:vals.length,date:due,rolled:$("shutdownRoll").checked});await log("shutdown.completed","Daily shutdown",{planned:vals.length,rolled:$("shutdownRoll").checked});$("shutdownForm").reset();$("shutdownRoll").checked=true;await load();await createSnapshot("Daily shutdown complete");toast("Day closed. Tomorrow's Signal is set.");
 }
 
+var paletteIndex=0,paletteItems=[];
 var paletteIndex=0,paletteItems=[];
 function paletteCommands(q){
   var items=[
     {label:"Quick add task",hint:"Create",action:"quick"},
-    {label:"Today",hint:"Go to view",action:"view:today"},
+    {label:"Signal",hint:"Today's 3–5 Must-Wins",action:"view:today"},
     {label:"Daily Shutdown",hint:"Close the day",action:"view:shutdown"},
     {label:"Weekly Review",hint:"Review",action:"view:review"},
     {label:"Activity History",hint:"Audit trail",action:"view:history"},
@@ -647,7 +683,7 @@ function renderWeeklyReview(){
 function nextMondayKey(){var d=new Date(),delta=(8-d.getDay())%7;if(delta===0)delta=7;d.setDate(d.getDate()+delta);return dateKey(d)}
 async function planNextWeek(e){
   e.preventDefault();var vals=[$("weekly1").value,$("weekly2").value,$("weekly3").value].map(function(x){return x.trim()}).filter(Boolean);if(!vals.length){toast("Add at least one priority");return}
-  var due=nextMondayKey(),planned=vals.map(function(title){return {id:uid("t"),title:title,description:"",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null}});await saveMany("tasks",planned);
+  var due=nextMondayKey(),planned=vals.map(function(title){return {id:uid("t"),title:title,description:"Next week's Signal",status:"next",priority:"high",projectId:"",dueDate:due,dueTime:"",repeat:"none",repeatInterval:1,repeatUntil:"",subtasks:[],createdAt:new Date().toISOString(),completedAt:null,archivedAt:null,deletedAt:null,signalDate:due}});await saveMany("tasks",planned);
   await log("review.planned","Weekly top priorities",{count:vals.length,dueDate:due});$("weeklyPlanForm").reset();await load();toast("Next week planned");
 }
 function templateCard(t,builtin){return '<article class="card template-card"><small class="caps">'+(builtin?"STARTER TEMPLATE":"YOUR TEMPLATE")+'</small><h3>'+esc(t.name)+'</h3><p>'+esc(t.description||t.title)+'</p><div class="meta"><span class="pill '+(t.priority||"medium")+'">'+esc(t.priority||"medium")+'</span><span class="pill">'+(t.subtasks||[]).length+' checklist</span></div><footer><div class="row"><button data-template-use="'+t.id+'" data-template-builtin="'+(builtin?"1":"0")+'" class="primary">Use template</button>'+(builtin?"":'<button data-template-edit="'+t.id+'">Edit</button>')+'</div></footer></article>'}
@@ -713,7 +749,7 @@ async function refreshSystemInfo(){
 
 var onboardingStep=0;
 var onboardingSlides=[
-  {icon:"⌂",eyebrow:"WELCOME",title:"Your day, without the noise.",body:"Today surfaces what matters now. Everything stays private on this device — no account and no cloud database required.",action:"See Quick Add"},
+  {icon:"◎",eyebrow:"WELCOME",title:"Signal over noise.",body:"Choose 3–5 Must-Wins for the day. Everything else stays parked until it earns a Signal slot. Your workspace stays private on this device.",action:"See Quick Add"},
   {icon:"＋",eyebrow:"CAPTURE FAST",title:"Type it like you think it.",body:"Try “Call Josh tomorrow 3pm #work !high.” Command Center pulls out the date, time, priority and project locally.",action:"See Planner"},
   {icon:"▣",eyebrow:"PLAN + MOVE",title:"See the month. Move the work.",body:"Planner puts deadlines on a calendar. Board lets you move tasks from Inbox → Next → Doing → Done.",action:"See Focus"},
   {icon:"◉",eyebrow:"FOCUS",title:"One task. One timer.",body:"Choose a task, start 25 / 50 / 90 minutes, and let everything else wait. Export JSON backups anytime from Settings.",action:"Start using Command Center"}
@@ -760,6 +796,7 @@ document.addEventListener("click",async function(e){
   if(b.dataset.add==="task")openTask();if(b.dataset.add==="project")openSimple("project");if(b.dataset.add==="note")openSimple("note");if(b.dataset.add==="habit")openSimple("habit");
   if(b.dataset.close)$(b.dataset.close).close();
   if(b.dataset.toggle)await toggleTask(b.dataset.toggle);
+  if(b.dataset.signalTask)await toggleSignal(b.dataset.signalTask);
   if(b.dataset.editTask)openTask(state.tasks.find(function(x){return x.id===b.dataset.editTask}));
   if(b.dataset.editNote)openSimple("note",state.notes.find(function(x){return x.id===b.dataset.editNote}));
   if(b.dataset.editProject)openSimple("project",state.projects.find(function(x){return x.id===b.dataset.editProject}));
