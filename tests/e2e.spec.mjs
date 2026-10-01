@@ -589,3 +589,42 @@ test("modal focus is trapped/restored and mobile large text avoids page overflow
   expect(overflow).toBeLessThanOrEqual(2);
   await expect(page.locator(".bottom")).toBeVisible();
 });
+
+
+test("privacy lock blocks command shortcuts until unlock",async ({page})=>{
+  await page.goto("/?view=settings");
+  await assertAppBooted(page);
+  await page.locator("#enablePrivacyLock").click();
+  await page.locator("#privacyCode").fill("7391");
+  await page.locator("#privacyCodeConfirm").fill("7391");
+  await page.locator("#privacySetupForm .primary").click();
+  await page.locator("#lockNow").click();
+  await page.keyboard.press("Control+K");
+  await expect(page.locator("#paletteModal")).not.toHaveAttribute("open","");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.locator("#quickModal")).not.toHaveAttribute("open","");
+  await page.locator("#privacyUnlockCode").fill("7391");
+  await page.locator("#privacyUnlockForm .primary").click();
+  await expect(page.locator("#privacyLockScreen")).toHaveClass(/hidden/);
+});
+
+test("projects can be edited after creation",async ({page})=>{
+  await page.goto("/?view=projects");
+  await assertAppBooted(page);
+  await page.locator('[data-add="project"]').click();
+  await page.locator("#simpleTitle").fill("Editable Project");
+  await page.locator("#simpleMeta").fill("Work");
+  await page.locator("#simpleForm .primary").click();
+  const card=page.locator("#projectGrid .card").filter({hasText:"Editable Project"});
+  await card.locator("[data-edit-project]").click();
+  await page.locator("#simpleTitle").fill("Edited Project");
+  await page.locator("#simpleForm .primary").click();
+  await expect(page.locator("#projectGrid")).toContainText("Edited Project");
+});
+
+test("unknown view falls back to Today",async ({page})=>{
+  await page.goto("/?view=bogus");
+  await assertAppBooted(page);
+  await expect(page.locator("#today")).toHaveClass(/active/);
+  await expect(page.locator("#title")).toHaveText("Today");
+});
