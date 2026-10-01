@@ -184,6 +184,48 @@ test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
   await expect(page.locator("#todayNoise")).toContainText("Must Win E");
 });
 
+test("Morning Signal Builder opens once per day and locks selected Must-Wins",async ({page})=>{
+  await page.addInitScript(()=>localStorage.removeItem("cc-signal-builder-day"));
+  await page.goto("/?view=tasks");
+  await assertAppBooted(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Morning choice A",priority:"high"});
+  await createTask(page,{title:"Morning choice B",priority:"medium"});
+  await page.evaluate(()=>localStorage.removeItem("cc-signal-builder-day"));
+  await page.reload();
+  await expect(page.locator("#signalBuilderModal")).toHaveAttribute("open","");
+  await expect(page.locator("#signalBuilderCandidates")).toContainText("Morning choice A");
+  const a=page.locator(".signal-builder-item").filter({hasText:"Morning choice A"}).locator("input");
+  const b=page.locator(".signal-builder-item").filter({hasText:"Morning choice B"}).locator("input");
+  await a.check();
+  await b.check();
+  await expect(page.locator("#signalBuilderCount")).toHaveText("2/5");
+  await page.locator("#signalBuilderForm .primary").click();
+  await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
+  await page.goto("/?view=today");
+  await expect(page.locator("#sToday")).toHaveText("2/5");
+  await expect(page.locator("#todayTasks")).toContainText("Morning choice A");
+  await page.reload();
+  await expect(page.locator("#signalBuilderModal")).not.toHaveAttribute("open","");
+});
+
+test("Focus Complete advances to the next Signal item",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Focus Signal A"});
+  await createTask(page,{title:"Focus Signal B"});
+  for(const title of ["Focus Signal A","Focus Signal B"]){
+    const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
+    await row.getByRole("button",{name:/Signal/}).click();
+  }
+  await page.goto("/?view=focus");
+  await page.locator("#focusTask").selectOption({label:"Focus Signal A"});
+  await page.locator("#focusComplete").click();
+  await expect(page.locator("#focusTask option:checked")).toHaveText("Focus Signal B");
+  await expect(page.locator("#focusNextHint")).toContainText("Finish this one");
+});
 test("Signal dashboard visibility and order persist after reload",async ({page})=>{
   await page.goto("/?view=today");
   await assertAppBooted(page);
