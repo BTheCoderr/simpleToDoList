@@ -148,7 +148,37 @@ test("tags filter tasks and bulk actions update the selected set",async ({page})
   }).toEqual(["doing:high","doing:high"]);
 });
 
-test("Today dashboard visibility and order persist after reload",async ({page})=>{
+test("Signal promotes, caps, parks, and survives reload",async ({page})=>{
+  await openTasks(page);
+  for(const title of ["Must Win A","Must Win B","Must Win C","Must Win D","Must Win E","Noise F"]){
+    await createTask(page,{title});
+  }
+
+  for(const title of ["Must Win A","Must Win B","Must Win C","Must Win D","Must Win E"]){
+    const row=page.locator("#taskList .task-row").filter({hasText:title}).first();
+    await row.getByRole("button",{name:/Signal/}).click();
+  }
+
+  const sixth=page.locator("#taskList .task-row").filter({hasText:"Noise F"}).first();
+  await sixth.getByRole("button",{name:/Signal/}).click();
+  await expect(page.locator("#toast")).toContainText("Signal is full");
+
+  await page.goto("/?view=today");
+  await expect(page.locator("#sToday")).toHaveText("5/5");
+  await expect(page.locator("#todayTasks")).toContainText("Must Win A");
+  await expect(page.locator("#todayNoise")).toContainText("Noise F");
+
+  const park=page.locator("#todayTasks .task-row").filter({hasText:"Must Win E"}).first();
+  await park.getByRole("button",{name:/Park/}).click();
+  await expect(page.locator("#sToday")).toHaveText("4/5");
+  await expect(page.locator("#todayNoise")).toContainText("Must Win E");
+
+  await page.reload();
+  await expect(page.locator("#sToday")).toHaveText("4/5");
+  await expect(page.locator("#todayNoise")).toContainText("Must Win E");
+});
+
+test("Signal dashboard visibility and order persist after reload",async ({page})=>{
   await page.goto("/?view=today");
   await assertAppBooted(page);
   await page.locator("#customizeToday").click();
@@ -536,7 +566,7 @@ test("installed shell reopens offline and local writes still work",async ({page,
 
   await context.setOffline(true);
   await page.reload({waitUntil:"domcontentloaded"});
-  await expect(page.getByRole("heading",{name:"Today",exact:true})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Signal",exact:true})).toBeVisible();
 
   await page.locator('[data-view="tasks"]').first().click();
   await createTask(page,{title:"Offline task"});
@@ -622,9 +652,9 @@ test("projects can be edited after creation",async ({page})=>{
   await expect(page.locator("#projectGrid")).toContainText("Edited Project");
 });
 
-test("unknown view falls back to Today",async ({page})=>{
+test("unknown view falls back to Signal",async ({page})=>{
   await page.goto("/?view=bogus");
   await assertAppBooted(page);
   await expect(page.locator("#today")).toHaveClass(/active/);
-  await expect(page.locator("#title")).toHaveText("Today");
+  await expect(page.locator("#title")).toHaveText("Signal");
 });
