@@ -265,6 +265,18 @@ test("Lock-In keeps one Must-Win visible, parks distractions, and ends in Signal
   await expect(page.locator("#taskList")).toContainText("Remember invoice");
 });
 
+test("Weekly Review shows where Signal actually went",async ({page})=>{
+  await openTasks(page);
+  await replaceTasks(page,0);
+  await page.reload();
+  await createTask(page,{title:"Aligned Must Win",project:"Win the Week"});
+  const row=page.locator("#taskList .task-row").filter({hasText:"Aligned Must Win"}).first();
+  await row.locator("[data-signal-task]").click();
+  await page.goto("/?view=review");
+  await expect(page.locator("#weeklyAlignment")).toContainText("Win the Week");
+  await expect(page.locator("#weeklyAlignment")).toContainText("1");
+});
+
 test("Signal History shows chosen versus completed Must-Wins",async ({page})=>{
   await openTasks(page);
   await replaceTasks(page,0);
