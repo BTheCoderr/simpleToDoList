@@ -149,7 +149,7 @@ IndexedDB stores:
 - snapshots
 - meta
 
-UI preferences, Saved Views, Today layout, Planner mode, and Privacy Lock metadata use localStorage/sessionStorage.
+UI preferences, Saved Views, Signal dashboard layout, Planner mode, and Privacy Lock metadata use localStorage/sessionStorage.
 
 Snapshots keep up to 7 rotating recovery points and cap each snapshot at 4 MB. JSON import is capped at 8 MB and validates backup version, stores, and record shapes before local data is replaced.
 
