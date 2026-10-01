@@ -1007,7 +1007,7 @@ $("openShareCapture").onclick=function(){openShareCapture(new URLSearchParams())
 $("pasteShare").onclick=async function(){try{var t=await navigator.clipboard.readText();if(t)$("shareBody").value=[$("shareBody").value.trim(),t].filter(Boolean).join("\n")}catch(e){toast("Clipboard access is not available here")}};
 $("shutdownForm").onsubmit=completeShutdown;
 $("signalBuilderForm").onsubmit=saveMorningSignal;
-$("signalBuilderSkip").onclick=skipMorningSignalBuilder;
+$("signalBuilderSkip").onclick=skipMorningSignalBuilder;$("signalBuilderSkipBottom").onclick=skipMorningSignalBuilder;
 $("createSnapshot").onclick=async function(){await createSnapshot("Manual snapshot");toast("Snapshot created")};
 $("deleteTask").onclick=async function(){var id=$("taskId").value;if(id&&confirm("Move this task to Trash?")){$("taskModal").close();await trashTask(id)}};
 $("archiveTask").onclick=async function(){var id=$("taskId").value;if(id){$("taskModal").close();await archiveTaskById(id)}};
