@@ -4,6 +4,9 @@ This roadmap describes product direction, not guaranteed dates.
 
 ## Shipped
 
+- Signal First daily workflow with 3–5 Must-Wins and a hard cap of 5
+- Noise Parking Lot with promote / park controls
+- Signal-first Focus Mode and tomorrow-Signal Daily Shutdown
 - local-first IndexedDB workspace
 - Inbox / Next / Doing / Done task workflow
 - Smart Quick Add
@@ -13,7 +16,7 @@ This roadmap describes product direction, not guaranteed dates.
 - Month / Week / Day Planner
 - Kanban Board
 - Focus Mode
-- customizable Today dashboard
+- customizable Signal dashboard
 - Daily Shutdown and Weekly Review
 - Analytics and Activity History
 - Archive / Trash / Undo
