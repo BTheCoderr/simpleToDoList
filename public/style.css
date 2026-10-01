@@ -195,3 +195,14 @@ body{min-height:100dvh;overscroll-behavior-y:none}
 .privacy-lock-status{margin:14px 0 4px}.privacy-screen{position:fixed;inset:0;z-index:999;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(18px);display:grid;place-items:center;padding:20px}
 .privacy-card{width:min(430px,100%);display:grid;gap:15px;padding:26px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 30px 100px rgba(0,0,0,.35)}.privacy-card .brand{padding:0}.privacy-card h2{font-size:32px;letter-spacing:-.04em;margin:8px 0 0}.privacy-card p{color:var(--muted);margin:0}.privacy-card label{display:grid;gap:6px;font-size:11px;font-weight:800;color:var(--muted)}.privacy-card button{width:100%}
 .privacy-error{min-height:16px;color:var(--bad);font-weight:800}.privacy-locked{overflow:hidden}
+
+/* v7.3 audit hardening */
+.privacy-locked header,.privacy-locked main,.privacy-locked .bottom,.privacy-locked .update-banner,.privacy-locked #toast{visibility:hidden!important}
+.privacy-locked .privacy-screen{visibility:visible!important}
+@media (min-width:761px) and (max-width:980px){
+  .view,.panel,.card,.grid>*{min-width:0}
+  .row,.buttons,.filters,.panelhead,.task-toolbar,.bulkbar,.settingsrow{flex-wrap:wrap}
+  .segmented{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+  .segmented>*{flex:0 0 auto}
+  .formgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
