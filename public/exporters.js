@@ -1,5 +1,6 @@
 function csvCell(value){
-  const text=String(value??"");
+  const raw=String(value??"");
+  const text=/^[=+\-@]/.test(raw)?"'"+raw:raw;
   return /[",\n\r]/.test(text)?'"'+text.replaceAll('"','""')+'"':text;
 }
 export function tasksToCsv(tasks,projects){
@@ -28,8 +29,8 @@ export function workspaceToMarkdown(data){
     if(linked.length)out.push("");
   }
 
-  const linkedProjectIds=new Set(projects.filter(p=>p.goalId).map(p=>p.id));
-  const unlinked=projects.filter(p=>!linkedProjectIds.has(p.id));
+  const validGoalIds=new Set(goals.map(g=>g.id));
+  const unlinked=projects.filter(p=>!p.goalId||!validGoalIds.has(p.goalId));
   out.push("## Other Projects","");
   if(!unlinked.length)out.push("_No unlinked projects._","");
   for(const project of unlinked){
@@ -38,7 +39,8 @@ export function workspaceToMarkdown(data){
     out.push("");
   }
 
-  const loose=tasks.filter(t=>!t.projectId&&!t.deletedAt);
+  const projectIds=new Set(projects.map(p=>p.id));
+  const loose=tasks.filter(t=>(!t.projectId||!projectIds.has(t.projectId))&&!t.deletedAt);
   out.push("## Unassigned Tasks","");
   if(!loose.length)out.push("_No unassigned tasks._","");
   else loose.forEach(task=>out.push("- ["+(task.status==="done"?"x":" ")+"] "+line(task.title)));
