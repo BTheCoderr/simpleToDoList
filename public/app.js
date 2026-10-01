@@ -32,13 +32,14 @@ import { BACKUP_VERSION, MAX_IMPORT_BYTES, validateBackupPayload } from "./backu
 import { createPrivacyCredential, verifyPrivacyCode } from "./privacy.js";
 import { tasksToCsv, workspaceToMarkdown } from "./exporters.js";
 
-const SW_CACHE="command-center-v19";
+const SW_CACHE="command-center-v20";
 var state={tasks:[],projects:[],notes:[],habits:[],activity:[],templates:[],goals:[],snapshots:[],_active:[],filter:"open",projectFilter:"",tagFilter:"",savedViewId:"",archiveFilter:"archived",bulkMode:false,selectedTaskIds:new Set(),view:localStorage.getItem("cc-view")||"today",calendarCursor:new Date(),plannerMode:localStorage.getItem("cc-planner-mode")||"month",focus:null};
 var VALID_VIEWS=["today","tasks","planner","board","focus","goals","projects","notes","habits","shutdown","review","templates","archive","analytics","history","settings"];
 if(!VALID_VIEWS.includes(state.view))state.view="today";
 var editingSubtasks=[];
 var focusTimer=null;
 var pendingSignalSwapId="";
+var lockInActive=false;
 var $=function(id){return document.getElementById(id)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var dialogReturnFocus=new WeakMap();
 function dialogFocusables(dialog){
@@ -103,6 +104,25 @@ function addSignalHistory(t,date){var set=new Set(t.signalHistory||[]);set.add(d
 function removeSignalHistory(t,date){t.signalHistory=(t.signalHistory||[]).filter(function(d){return d!==date})}
 function yesterdayKey(){var d=new Date();d.setDate(d.getDate()-1);return dateKey(d)}
 function noiseAgeLabel(days){return days>=30?days+"d stale":days>=14?days+"d waiting":days>=7?days+"d old":""}
+function dailyIntentKey(date){return "cc-daily-intent-"+(date||today())}
+function dailyIntent(){return (localStorage.getItem(dailyIntentKey())||"").trim()}
+function setDailyIntent(value,date){
+  var key=dailyIntentKey(date),clean=String(value||"").trim();
+  if(clean)localStorage.setItem(key,clean);else localStorage.removeItem(key);
+  return clean;
+}
+function renderDailyIntent(){
+  var intent=dailyIntent(),text=$("dailyIntentText"),button=$("editDailyIntent");
+  if(!text||!button)return;
+  text.textContent=intent||"If today goes right, what will be different by tonight?";
+  button.textContent=intent?"Edit intent":"Set intent";
+  $("dailyIntentBanner").classList.toggle("empty-intent",!intent);
+}
+function recentSignalDates(days){
+  var keys=[],d=new Date();d.setHours(12,0,0,0);
+  for(var i=0;i<days;i++){var x=new Date(d);x.setDate(d.getDate()-i);keys.push(dateKey(x))}
+  return new Set(keys);
+}
 
 function nav(){
   var navView=["templates","archive"].includes(state.view)?"tasks":["shutdown","analytics","history"].includes(state.view)?"review":state.view;
@@ -307,7 +327,7 @@ function renderToday(){
   $("sToday").textContent=signal.length+"/"+MAX_DAILY_SIGNAL;$("sSignalDone").textContent=signalDone.length;$("sNoise").textContent=noise.length;$("sOverdue").textContent=open.filter(overdue).length;
   $("todayHabits").innerHTML=state.habits.length?state.habits.slice(0,5).map(habitHTML).join(""):'<div class="empty">Add a habit.</div>';
   $("todayProjects").innerHTML=state.projects.slice(0,5).map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0;return'<div class="mini"><b>'+esc(p.name)+'</b><small>'+d+'/'+a.length+' tasks complete</small><div class="progress"><i style="width:'+pc+'%"></i></div></div>'}).join("")||'<div class="empty">No projects yet.</div>';
-  renderSignalHistory();applyDashboardLayout();
+  renderSignalHistory();renderDailyIntent();applyDashboardLayout();
 }
 function renderProjects(){$("projectGrid").innerHTML=state.projects.map(function(p){var a=activeTasks().filter(function(t){return t.projectId===p.id}),d=a.filter(function(t){return t.status==="done"}).length,pc=a.length?Math.round(d/a.length*100):0,goal=gname(p.goalId);return'<article class="card"><small class="caps">'+esc(p.area||"PROJECT")+'</small><h3>'+esc(p.name)+'</h3>'+(goal?'<span class="goal-chip">◎ '+esc(goal)+'</span>':'')+'<p>'+a.length+' tasks · '+pc+'% complete</p><footer><div class="progress"><i style="width:'+pc+'%"></i></div><div class="row"><button data-project-task="'+p.id+'" class="primary">＋ Task</button><button data-focus-project="'+p.id+'" class="link">View tasks</button><button data-edit-project="'+p.id+'">Edit</button><button data-delete-project="'+p.id+'">Delete</button></div></footer></article>'}).join("")||'<div class="empty">Create a project for an outcome that takes more than one task.</div>'}
 function renderNotes(){$("noteGrid").innerHTML=state.notes.slice().sort(function(a,b){return Number(b.pinned)-Number(a.pinned)}).map(function(n){return'<article class="card note" data-edit-note="'+n.id+'"><small class="caps">'+(n.pinned?"PINNED NOTE":"NOTE")+'</small><h3>'+esc(n.title)+'</h3><p>'+esc(n.body||"Empty note")+'</p><small>'+new Date(n.updatedAt).toLocaleDateString()+'</small></article>'}).join("")||'<div class="empty">Your thinking space is empty.</div>'}
@@ -438,7 +458,9 @@ async function saveTask(e){
   if(!t.title)return;await save("tasks",t);if(was!=="done"&&status==="done")await spawnNextOccurrence(t);await log(old?"task.updated":"task.created",t.title);$("taskModal").close();await load();toast(old?"Task updated":"Task created")
 }
 async function toggleTask(id){
-  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;await setTaskStatus(t,t.status==="done"?"next":"done");await load()
+  var t=state.tasks.find(function(x){return x.id===id});if(!t)return;var completing=t.status!=="done",wasSignal=t.signalDate===today();
+  await setTaskStatus(t,completing?"done":"next");await load();
+  if(completing&&wasSignal&&!openSignalTasks(activeTasks(),today()).length)showSignalClear();
 }
 function renderSignalSwap(incoming){
   var current=openSignalTasks(activeTasks(),today());
@@ -501,6 +523,7 @@ function renderSignalBuilder(){
 function openMorningSignalBuilder(force){
   if(!force&&localStorage.getItem("cc-signal-builder-day")===today())return;
   if(!activeTasks().some(function(t){return t.status!=="done"}))return;
+  $("dailyIntentInput").value=dailyIntent();
   renderSignalBuilder();openDialog($("signalBuilderModal"));
 }
 async function saveMorningSignal(e){
@@ -514,7 +537,7 @@ async function saveMorningSignal(e){
     else if(t.signalDate===today()){t.signalDate="";removeSignalHistory(t,today());changed.push(t)}
   });
   if(changed.length)await saveMany("tasks",changed);
-  localStorage.setItem("cc-signal-builder-day",today());await log("signal.morning-set","Morning Signal",{count:checked.length,date:today()});
+  var intent=setDailyIntent($("dailyIntentInput").value);localStorage.setItem("cc-signal-builder-day",today());await log("signal.morning-set","Morning Signal",{count:checked.length,date:today(),intent:!!intent});
   $("signalBuilderModal").close();await load();toast("Today's Signal is locked");
 }
 function skipMorningSignalBuilder(){localStorage.setItem("cc-signal-builder-day",today());$("signalBuilderModal").close();toast("Morning check skipped")}
@@ -554,26 +577,90 @@ function renderFocus(){
   $("focusStatusText").textContent=state.focus.taskId?(state.tasks.find(function(t){return t.id===state.focus.taskId})||{}).title||"Pick one Must-Win.":"Pick one Must-Win. Noise can wait.";
   var next=signal.find(function(t){return t.id!==state.focus.taskId});
   $("focusNextHint").textContent=next?"Next Signal: "+next.title:(signal.length?"Finish this one and your Signal is clear.":"No open Signal remains.");
+  $("focusLockIn").disabled=!signal.length&&!state.focus.taskId;
   var start=new Date();start.setHours(0,0,0,0);var hist=state.activity.filter(function(a){return a.type==="focus.completed"&&new Date(a.createdAt)>=start}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
   $("focusHistory").innerHTML=hist.length?hist.map(function(a){return'<div class="focus-history-item"><b>'+esc(a.label)+'</b><small>'+a.minutes+' min · '+new Date(a.createdAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+'</small></div>'}).join(""):'<div class="empty">No focus sessions yet today.</div>';
+}
+function lockInTask(){
+  var current=state.tasks.find(function(t){return t.id===state.focus.taskId&&t.status!=="done"&&t.signalDate===today()&&!t.deletedAt&&!t.archivedAt});
+  return current||openSignalTasks(activeTasks(),today())[0]||null;
+}
+function lockInNextAction(t){
+  if(!t)return "Choose a Must-Win.";
+  var next=(t.subtasks||[]).find(function(x){return !x.done});
+  if(next)return next.title;
+  return t.description||"Finish this Must-Win.";
+}
+function renderLockIn(){
+  var t=lockInTask();if(!t)return;
+  if(state.focus.taskId!==t.id){state.focus.taskId=t.id;persistFocus()}
+  $("lockInTitle").textContent=t.title;
+  var intent=dailyIntent();$("lockInIntent").textContent=intent?"Tonight looks different because: "+intent:"";
+  var project=state.projects.find(function(p){return p.id===t.projectId}),goal=project&&state.goals.find(function(g){return g.id===project.goalId}),meta=[];
+  if(project)meta.push('<span>'+esc(project.name)+'</span>');if(goal)meta.push('<span>◎ '+esc(goal.name)+'</span>');
+  $("lockInMeta").innerHTML=meta.join("")||'<span>Today\'s Signal</span>';
+  $("lockInNextAction").textContent=lockInNextAction(t);
+  $("lockInClock").textContent=focusDisplay(state.focus.remaining);
+  $("lockInStart").textContent=state.focus.running?"Running…":(state.focus.remaining<state.focus.minutes*60?"Resume":"Start");
+  $$("[data-lock-minutes]").forEach(function(b){b.classList.toggle("active",Number(b.dataset.lockMinutes)===state.focus.minutes)});
+}
+function openLockIn(taskId){
+  if(!state.focus)loadFocus();
+  var candidate=taskId&&state.tasks.find(function(t){return t.id===taskId&&t.status!=="done"&&t.signalDate===today()});
+  if(!candidate)candidate=lockInTask();
+  if(!candidate){toast("Choose a Must-Win before entering Lock-In Mode");return}
+  state.focus.taskId=candidate.id;persistFocus();lockInActive=true;renderLockIn();openDialog($("lockInModal"));
+}
+function closeLockIn(){
+  lockInActive=false;if($("lockInModal").open)$("lockInModal").close();renderFocus();
+}
+function startLockIn(){
+  var t=lockInTask();if(!t){toast("No open Signal remains");return}
+  state.focus.taskId=t.id;if(state.focus.remaining<=0)state.focus.remaining=state.focus.minutes*60;
+  state.focus.running=true;state.focus.endAt=Date.now()+state.focus.remaining*1000;persistFocus();clearInterval(focusTimer);focusTimer=setInterval(tickFocus,1000);renderFocus();renderLockIn();
+}
+function pauseLockIn(){pauseFocus();renderLockIn()}
+function showSignalClear(){
+  var signal=signalTasks(activeTasks(),today()),done=signal.filter(function(t){return t.status==="done"});
+  if(!signal.length||done.length!==signal.length)return false;
+  closeLockIn();$("signalClearScore").textContent=done.length+" / "+signal.length;openDialog($("signalClearModal"));return true;
+}
+async function advanceSignalAfterCompletion(){
+  await load();var next=openSignalTasks(activeTasks(),today())[0];
+  state.focus.taskId=next?next.id:"";state.focus.remaining=state.focus.minutes*60;state.focus.running=false;state.focus.endAt=null;persistFocus();renderFocus();
+  if(next){if(lockInActive)renderLockIn();toast("Next Signal: "+next.title);return next}
+  showSignalClear();return null;
 }
 async function completeFocusedTask(){
   var t=state.tasks.find(function(x){return x.id===$("focusTask").value});if(!t){toast("Choose a task first");return}
   clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;
-  await setTaskStatus(t,"done");await load();
-  var next=openSignalTasks(activeTasks(),today())[0];
-  state.focus.taskId=next?next.id:"";state.focus.remaining=state.focus.minutes*60;persistFocus();renderFocus();
-  if(next)toast("Next Signal: "+next.title);else toast("Signal cleared. "+signalTasks(activeTasks(),today()).filter(function(x){return x.status==="done"}).length+"/"+signalTasks(activeTasks(),today()).length+" complete");
+  await setTaskStatus(t,"done");await advanceSignalAfterCompletion();
+}
+async function completeLockInTask(){
+  var t=lockInTask();if(!t)return;
+  clearInterval(focusTimer);focusTimer=null;state.focus.running=false;state.focus.endAt=null;
+  await setTaskStatus(t,"done");await advanceSignalAfterCompletion();
+}
+async function parkLockInTask(){
+  var t=lockInTask();if(!t)return;
+  await toggleSignal(t.id);var next=openSignalTasks(activeTasks(),today())[0];
+  if(next){state.focus.taskId=next.id;persistFocus();renderLockIn();toast("Parked. Next Signal loaded")}else{closeLockIn();toast("Parked. No open Signal remains")}
+}
+async function captureLockInDistraction(e){
+  e.preventDefault();var input=$("lockInCapture"),value=input.value.trim();if(!value)return;
+  var q=parseQuick(value);if(!q.title)return;q.id=uid("t");q.signalDate="";q.signalHistory=[];q.noiseReviewedAt=null;
+  await save("tasks",q);await log("lockin.captured",q.title,{source:"lock-in-distraction"});input.value="";await load();renderLockIn();toast("Parked in Noise. Stay locked in.")
 }
 async function finishFocus(){
   var task=state.tasks.find(function(t){return t.id===state.focus.taskId}),minutes=state.focus.minutes;
   if(task)await log("focus.completed",task.title,{minutes:minutes});
-  state.focus={taskId:state.focus.taskId,minutes:minutes,remaining:minutes*60,running:false,endAt:null};persistFocus();clearInterval(focusTimer);focusTimer=null;await load();toast("Focus session complete")
+  state.focus={taskId:state.focus.taskId,minutes:minutes,remaining:minutes*60,running:false,endAt:null};persistFocus();clearInterval(focusTimer);focusTimer=null;await load();if(lockInActive)renderLockIn();toast("Focus session complete")
 }
 function tickFocus(){
   if(!state.focus||!state.focus.running)return;
   state.focus.remaining=Math.max(0,Math.ceil((state.focus.endAt-Date.now())/1000));
   if($("focusClock"))$("focusClock").textContent=focusDisplay(state.focus.remaining);
+  if($("lockInClock")&&$("lockInModal").open)$("lockInClock").textContent=focusDisplay(state.focus.remaining);
   if(state.focus.remaining<=0)finishFocus();
 }
 function startFocus(){
@@ -769,6 +856,21 @@ function renderWeeklyReview(){
   $("reviewWins").innerHTML=completed.length?completed.slice(0,8).map(function(t){return '<div class="review-win"><span>✓</span><div><b>'+esc(t.title)+'</b><small>'+(t.completedAt?new Date(t.completedAt).toLocaleDateString():"Completed")+'</small></div></div>'}).join(""):'<div class="empty">No completed tasks in the last 7 days yet.</div>';
   var attention=over.concat(stale.filter(function(t){return !over.some(function(o){return o.id===t.id})})).slice(0,8);
   $("reviewNeedsAttention").innerHTML=attention.length?attention.map(taskHTML).join(""):'<div class="empty">Nothing overdue or stale. Nice.</div>';
+  var recent=recentSignalDates(7),touches=[];
+  history.forEach(function(t){(t.signalHistory||[]).forEach(function(date){if(recent.has(date))touches.push({task:t,date:date})})});
+  var projectCounts=new Map(),goalCounts=new Map(),unlinked=0;
+  touches.forEach(function(x){
+    var p=state.projects.find(function(project){return project.id===x.task.projectId});
+    if(!p){unlinked++;return}
+    projectCounts.set(p.id,(projectCounts.get(p.id)||0)+1);
+    if(p.goalId)goalCounts.set(p.goalId,(goalCounts.get(p.goalId)||0)+1);
+  });
+  var projects=Array.from(projectCounts.entries()).map(function(entry){return {name:pname(entry[0]),count:entry[1]}}).sort(function(a,b){return b.count-a.count});
+  var goals=Array.from(goalCounts.entries()).map(function(entry){return {name:gname(entry[0]),count:entry[1]}}).sort(function(a,b){return b.count-a.count});
+  $("weeklyAlignment").innerHTML=touches.length?
+    '<div class="alignment-summary"><b>'+touches.length+'</b><span>Signal placements this week</span></div>'+
+    '<div class="alignment-groups"><div><small class="caps">PROJECTS</small>'+(projects.length?projects.map(function(x){return '<div class="alignment-row"><span>'+esc(x.name)+'</span><b>'+x.count+'</b></div>'}).join(""):'<div class="empty">No linked projects received Signal.</div>')+(unlinked?'<div class="alignment-row muted"><span>Unlinked Signal</span><b>'+unlinked+'</b></div>':"")+'</div><div><small class="caps">GOALS</small>'+(goals.length?goals.map(function(x){return '<div class="alignment-row"><span>'+esc(x.name)+'</span><b>'+x.count+'</b></div>'}).join(""):'<div class="empty">No linked goals received Signal.</div>')+'</div></div>'
+    :'<div class="empty">Choose Signal during the week and Command Center will show where your attention actually went.</div>';
 }
 function nextMondayKey(){var d=new Date(),delta=(8-d.getDay())%7;if(delta===0)delta=7;d.setDate(d.getDate()+delta);return dateKey(d)}
 async function planNextWeek(e){
@@ -903,6 +1005,7 @@ document.addEventListener("click",async function(e){
   if(b.dataset.search){var z=b.dataset.search.split(":");$("searchBox").classList.add("hidden");$("search").value="";if(z[0]==="task")openTask(state.tasks.find(function(x){return x.id===z[1]}));else if(z[0]==="note")openSimple("note",state.notes.find(function(x){return x.id===z[1]}));else if(z[0]==="goal")openGoal(state.goals.find(function(x){return x.id===z[1]}));else{state.view=z[0];nav()}}
   if(b.dataset.dateAdd)openTask(null,b.dataset.dateAdd);
   if(b.dataset.minutes){state.focus.minutes=Number(b.dataset.minutes);state.focus.remaining=state.focus.minutes*60;state.focus.running=false;state.focus.endAt=null;persistFocus();renderFocus()}
+  if(b.dataset.lockMinutes){state.focus.minutes=Number(b.dataset.lockMinutes);state.focus.remaining=state.focus.minutes*60;state.focus.running=false;state.focus.endAt=null;persistFocus();renderFocus();renderLockIn()}
   if(b.dataset.subtaskToggle){var s=editingSubtasks.find(function(x){return x.id===b.dataset.subtaskToggle});if(s){s.done=!s.done;renderSubtasks()}}
   if(b.dataset.subtaskDelete){editingSubtasks=editingSubtasks.filter(function(x){return x.id!==b.dataset.subtaskDelete});renderSubtasks()}
   if(b.dataset.swipeEdit){closeSwipeRows();openTask(state.tasks.find(function(x){return x.id===b.dataset.swipeEdit}))}
@@ -979,6 +1082,9 @@ $("openPalette").onclick=openPalette;$("sidebarPalette").onclick=openPalette;
 $("addTask").onclick=function(){openQuick()};
 $("customizeToday").onclick=openDashboardCustomize;
 $("openSignalBuilder").onclick=function(){openMorningSignalBuilder(true)};
+$("editDailyIntent").onclick=function(){openMorningSignalBuilder(true)};
+$("lockInFromToday").onclick=function(){openLockIn()};
+$("focusLockIn").onclick=function(){openLockIn($("focusTask").value)};
 $("dashboardForm").onsubmit=saveDashboardLayout;
 $("resetDashboard").onclick=resetDashboardDraft;
 $("bulkToggle").onclick=toggleBulkMode;
@@ -1028,6 +1134,11 @@ $("calToday").onclick=function(){state.calendarCursor=new Date();renderCalendar(
 $("focusStart").onclick=startFocus;$("focusPause").onclick=pauseFocus;$("focusReset").onclick=resetFocus;
 $("focusTask").onchange=function(){state.focus.taskId=this.value;persistFocus();renderFocus()};
 $("focusComplete").onclick=completeFocusedTask;
+$("lockInStart").onclick=startLockIn;$("lockInPause").onclick=pauseLockIn;$("lockInComplete").onclick=completeLockInTask;$("lockInPark").onclick=parkLockInTask;$("lockInExit").onclick=closeLockIn;
+$("lockInCaptureForm").onsubmit=captureLockInDistraction;
+$("signalClearTomorrow").onclick=function(){$("signalClearModal").close();state.view="shutdown";nav();window.scrollTo(0,0)};
+$("signalClearNoise").onclick=function(){$("signalClearModal").close();state.savedViewId="";state.projectFilter="";state.tagFilter="";state.filter="noise";state.view="tasks";nav();renderTasks();window.scrollTo(0,0)};
+$("signalClearDone").onclick=function(){$("signalClearModal").close();state.view="today";nav();window.scrollTo(0,0)};
 $("light").onclick=function(){localStorage.setItem("cc-theme","light");theme()};$("dark").onclick=function(){localStorage.setItem("cc-theme","dark");theme()};
 $("export").onclick=exportAll;
 $("exportCsv").onclick=exportTasksCsv;

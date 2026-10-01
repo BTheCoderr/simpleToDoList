@@ -1,5 +1,15 @@
 # Changelog
 
+## 8.2.0 — Lock In
+
+- Added immersive full-screen **Lock-In Mode** for working one Signal Must-Win at a time.
+- Added a one-line daily intent: “If today goes right, what will be different by tonight?”
+- Added distraction capture inside Lock-In Mode; captured thoughts go directly to Noise without closing the mode.
+- Added **Signal Clear** when the final Must-Win is completed, with Plan Tomorrow / Review Noise / I’m Done exits.
+- Added weekly Signal alignment showing which projects and goals actually received attention in the last 7 days.
+- Kept Lock-In on the existing Focus timer and local-first architecture — no account, cloud service, or schema migration.
+- Bumped Command Center to v8.2.0 and the offline cache to `command-center-v20`.
+
 ## 8.1.0 — Lock In Loop
 
 - Added a guided Morning Signal Builder that surfaces unfinished prior Signal, overdue work, in-progress tasks, and high-priority candidates.

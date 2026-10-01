@@ -7,6 +7,9 @@ This roadmap describes product direction, not guaranteed dates.
 - Signal First daily workflow with 3–5 Must-Wins and a hard cap of 5
 - Noise Parking Lot with promote / park controls
 - Signal-first Focus Mode and tomorrow-Signal Daily Shutdown
+- full-screen Lock-In Mode with distraction capture
+- daily intent and Signal Clear completion state
+- weekly Signal alignment by project and goal
 - local-first IndexedDB workspace
 - Inbox / Next / Doing / Done task workflow
 - Smart Quick Add

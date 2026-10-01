@@ -2,7 +2,7 @@
   "name": "Command Center",
   "short_name": "Command",
   "id": "/",
-  "description": "Private local-first signal-first personal productivity command center",
+  "description": "Private local-first Signal and Lock-In productivity command center",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

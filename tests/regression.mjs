@@ -45,9 +45,9 @@ function test(name,fn){
 
 const manifest=JSON.parse(manifestText);
 
-test("release version is 8.1.0",()=>{
-  assert.equal(APP_VERSION,"8.1.0");
-  assert.equal(pkg.version,"8.1.0");
+test("release version is 8.2.0",()=>{
+  assert.equal(APP_VERSION,"8.2.0");
+  assert.equal(pkg.version,"8.2.0");
 });
 test("app uses browser modules",()=>assert.match(html,/type="module" src="\/app\.js"/));
 test("storage, core, backup, privacy, and exporter modules are imported",()=>{
@@ -93,8 +93,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v19 and caches v8.1 modules",()=>{
-  assert.match(sw,/command-center-v19/);
+test("service worker cache is v20 and caches v8.2 modules",()=>{
+  assert.match(sw,/command-center-v20/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
@@ -236,6 +236,33 @@ test("v8.1 Signal execution loop covers morning planning history focus-next and 
   assert.match(html,/Complete & next Signal/);
   assert.match(html,/SIGNAL HISTORY/);
   assert.match(html,/Something has to leave/);
+  assert.equal(DB_VERSION,4);
+});
+
+test("v8.2 Lock-In philosophy layer is explicit and local-first",()=>{
+  for(const id of [
+    "dailyIntentBanner","dailyIntentText","dailyIntentInput","lockInFromToday","focusLockIn",
+    "lockInModal","lockInTitle","lockInIntent","lockInMeta","lockInNextAction","lockInClock",
+    "lockInStart","lockInPause","lockInComplete","lockInPark","lockInCaptureForm","lockInCapture",
+    "signalClearModal","signalClearScore","signalClearTomorrow","signalClearNoise","signalClearDone",
+    "weeklyAlignment"
+  ])assert.ok(ids.includes(id),id+" missing");
+  assert.match(app,/function openLockIn/);
+  assert.match(app,/function renderLockIn/);
+  assert.match(app,/function captureLockInDistraction/);
+  assert.match(app,/lockin\.captured/);
+  assert.match(app,/function showSignalClear/);
+  assert.match(app,/function dailyIntentKey/);
+  assert.match(app,/cc-daily-intent-/);
+  assert.match(app,/function recentSignalDates/);
+  assert.match(html,/ONE THING/);
+  assert.match(html,/Capture it\. Stay here\./);
+  assert.match(html,/SIGNAL CLEAR/);
+  assert.match(html,/What actually received attention/);
+  assert.match(html,/If today goes right, what will be different by tonight/);
+  assert.match(css,/dialog\.lockin-dialog/);
+  assert.match(css,/\.signal-clear/);
+  assert.match(css,/\.weekly-alignment/);
   assert.equal(DB_VERSION,4);
 });
 
