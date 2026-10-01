@@ -35,6 +35,16 @@ export function validateBackupPayload(payload,byteSize=0){
     if(!payload[store].every(isRecord)){
       return {ok:false,error:"Backup is invalid: "+store+" contains malformed records."};
     }
+    const ids=new Set();
+    for(const record of payload[store]){
+      if(typeof record.id!=="string"||!record.id.trim()){
+        return {ok:false,error:"Backup is invalid: every "+store+" record needs a non-empty string id."};
+      }
+      if(ids.has(record.id)){
+        return {ok:false,error:"Backup is invalid: "+store+" contains duplicate ids."};
+      }
+      ids.add(record.id);
+    }
   }
 
   const data={};
