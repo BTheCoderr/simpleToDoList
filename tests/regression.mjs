@@ -87,8 +87,8 @@ test("production PWA PNG icons exist and are declared",()=>{
   assert.match(html,/apple-touch-icon\.png/);
 });
 
-test("service worker cache is v16 and caches v7.3 modules",()=>{
-  assert.match(sw,/command-center-v16/);
+test("service worker cache is v17 and caches v7.3 modules",()=>{
+  assert.match(sw,/command-center-v17/);
   for(const asset of ["/core.js","/storage.js","/backup.js","/privacy.js","/exporters.js","/icon-192.png","/icon-512.png","/apple-touch-icon.png"]){
     assert.ok(sw.includes(asset),asset+" not cached");
   }
